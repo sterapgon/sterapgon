@@ -128,7 +128,6 @@ Sub SplitDataBasedOnColumnJ()
     MsgBox "Data has been split based on column J."
 End Sub
 
-' สุ่มบ้านเลขที่ หมู่ที่ และลบข้อมูลที่มีค่า "(null)" ต้องกำหนดชีท, ชื่อเซลส์ ที่ต้องการให้สุ่มด้วยนะ
 Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
     Dim ws As Worksheet
     Dim searchValue As String
@@ -153,7 +152,7 @@ Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
 
     For i = 1 To lastRow
         For j = 1 To lastCol
-            cellValue = ws.Cells(i, j).Value
+            cellValue = ws.Cells(i, j).value
             ' Check if the cell contains "(null)"
             If InStr(1, cellValue, "(null)", vbTextCompare) > 0 Then
                 ws.Cells(i, j).ClearContents ' Remove the "(null)" by clearing the cell
@@ -165,7 +164,7 @@ Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
     ' Loop through each cell in column K starting from row 2 to the last row with data for house number generation
     For i = 2 To lastRow
         ' Get the value from cell K
-        searchValue = ws.Cells(i, "J").Value
+        searchValue = ws.Cells(i, "K").value
         
         ' Get the first 4 characters and trim leading zeros
         If Len(searchValue) >= 4 Then
@@ -179,27 +178,27 @@ Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
         randomNumber = Application.WorksheetFunction.RandBetween(0, 999)
         
         ' Combine house number with random number
-        ws.Cells(i, "S").Value = houseNumber & "/" & Format(randomNumber, "000") ' Format random number to 3 digits
+        ws.Cells(i, "R").value = houseNumber & "/" & Format(randomNumber, "000") ' Format random number to 3 digits
         debugLog = debugLog & "Row " & i & ": Generated house number '" & houseNumber & "/" & Format(randomNumber, "000") & "'." & vbCrLf
         
         ' Generate a random single digit between 1 and 9 for column T
         randomSingleDigit = Application.WorksheetFunction.RandBetween(1, 9)
-        ws.Cells(i, "T").Value = randomSingleDigit
+        ws.Cells(i, "S").value = randomSingleDigit
         debugLog = debugLog & "Row " & i & ": Generated single digit '" & randomSingleDigit & "' for column T." & vbCrLf
 
         ' Check column P and Q, if no data, insert "-"
-        If ws.Cells(i, "P").Value = "" Then
-            ws.Cells(i, "P").Value = "-"
+        If ws.Cells(i, "O").value = "" Then
+            ws.Cells(i, "O").value = "-"
             debugLog = debugLog & "Row " & i & ": Column P was empty, inserted '-'." & vbCrLf
         End If
-        If ws.Cells(i, "Q").Value = "" Then
-            ws.Cells(i, "Q").Value = "-"
+        If ws.Cells(i, "P").value = "" Then
+            ws.Cells(i, "P").value = "-"
             debugLog = debugLog & "Row " & i & ": Column Q was empty, inserted '-'." & vbCrLf
         End If
     Next i
 
     ' Show the final debug log
-    MsgBox "House numbers generated, '(null)' values removed, and missing data in P/Q filled with '-'!" & vbCrLf & vbCrLf & debugLog, vbInformation
+    MsgBox "House numbers generated"
 End Sub
 
 ' สุ่มข้อมูลในไฟล์ USER_OFFCOD_1.xlsx" ซึ่งเป็นไฟล์ที่เก็บ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์ พร้อม offcod + supoffcod และเอามาใส่ในไฟล์ที่ต้่องการ เพื่อปรับปรุงให้ตรงกับโจทย์ตาม สส. สท. ที่สามรถใช้งานได้
@@ -506,6 +505,7 @@ Sub DeleteAllSheetsExceptNID()
     Next ws
     Application.DisplayAlerts = True
 End Sub
+
     'ลบข้อมูลทุกชีต ยกเว้นชีตที่ตั้งไว้ และ reset format ของชีตนั้นๆ ด้วย
     Sub DeleteRowsAndClearFormatInAllSheetsExceptDataNID()
         Dim ws As Worksheet
@@ -542,4 +542,35 @@ End Sub
         MsgBox "Rows deleted, formats cleared, and text format set in all sheets except DATA NID!"
     End Sub
     
-    
+    'นับจำนวน supoffcod ที่มีค่าไม่ซ้ำกันในตราง โดยระบบจะแสดงจำนวนที่นับรวมได้ เพื่อนำไปตรวจสอบและหาต่อไปว่าอันไหนไม่ครบ
+    Sub CountUniqueValuesInColumnK()
+    Dim ws As Worksheet
+    Dim uniqueValues As Collection
+    Dim cell As Range
+    Dim lastRow As Long
+    Dim count As Long
+
+    ' Set the worksheet to check
+    Set ws = ThisWorkbook.Sheets("NID")
+
+    ' Initialize the collection to hold unique values
+    Set uniqueValues = New Collection
+
+    ' Find the last row in column K
+    lastRow = ws.Cells(ws.Rows.Count, "K").End(xlUp).Row
+
+    ' Loop through each cell in column K from row 2 to the last row
+    On Error Resume Next ' Ignore errors for duplicate keys
+    For Each cell In ws.Range("K2:K" & lastRow)
+        If Not IsEmpty(cell.Value) Then ' Check if the cell is not empty
+            uniqueValues.Add cell.Value, CStr(cell.Value) ' Add the value to the collection
+        End If
+    Next cell
+    On Error GoTo 0 ' Resume normal error handling
+
+    ' Count the number of unique values
+    count = uniqueValues.Count
+
+    ' Display the result in a message box
+    MsgBox "The number of unique values in column K is: " & count
+End Sub
