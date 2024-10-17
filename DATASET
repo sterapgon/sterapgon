@@ -1,4 +1,5 @@
-Sub FindDataInWorkbook2()
+' ตรวจสอบและมาร์คข้อมูลระหว่าง 2 ไฟล์
+Sub FindDataInWorkbook2() 
     Dim ws1 As Worksheet, ws2 As Worksheet, ws3 As Worksheet
     Dim lastRow1 As Long
     Dim i As Long
@@ -55,6 +56,8 @@ ErrHandler:
     MsgBox "Error: Could not open one of the workbooks. Please check the file path and extension.", vbCritical
     Debug.Print "Error: Could not open one of the workbooks" ' Debug log for error
 End Sub
+
+ ' ลบข้อมูลที่เป็นสีเขียวในชีตที่ต้องการ   
 Sub DeleteGreenRows()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -75,6 +78,8 @@ Sub DeleteGreenRows()
 
     MsgBox "Green rows deleted successfully!"
 End Sub
+
+' แยกชีตโดยใช้เงื่อนไขตามฟิลด์ J (SUPOFFCOD) เพื่อแบ่งชีตออกเป็นหลายๆ สท.
 Sub SplitDataBasedOnColumnJ()
     Dim wsSource As Worksheet
     Dim lastRow As Long, i As Long
@@ -122,6 +127,8 @@ Sub SplitDataBasedOnColumnJ()
 
     MsgBox "Data has been split based on column J."
 End Sub
+
+' สุ่มบ้านเลขที่ หมู่ที่ และลบข้อมูลที่มีค่า "(null)" ต้องกำหนดชีท, ชื่อเซลส์ ที่ต้องการให้สุ่มด้วยนะ
 Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
     Dim ws As Worksheet
     Dim searchValue As String
@@ -195,6 +202,7 @@ Sub GenerateHouseNumberAndRemoveNullWithDebugLog()
     MsgBox "House numbers generated, '(null)' values removed, and missing data in P/Q filled with '-'!" & vbCrLf & vbCrLf & debugLog, vbInformation
 End Sub
 
+' สุ่มข้อมูลในไฟล์ USER_OFFCOD_1.xlsx" ซึ่งเป็นไฟล์ที่เก็บ ตำบล อำเภอ จังหวัด รหัสไปรษณีย์ พร้อม offcod + supoffcod และเอามาใส่ในไฟล์ที่ต้่องการ เพื่อปรับปรุงให้ตรงกับโจทย์ตาม สส. สท. ที่สามรถใช้งานได้
 Sub CopyRandomDataFromUserOffCod()
     Dim wbUser As Workbook
     Dim wsThis As Worksheet, wsUser As Worksheet
@@ -285,6 +293,8 @@ Sub CopyRandomDataFromUserOffCod()
     wbUser.Close SaveChanges:=False
     Debug.Print "USER_OFFCOD workbook closed." ' Debug log for workbook closure
 End Sub
+
+' สุ่มสีในแต่ละชีท โดยแบ่งเป็น 3 สีของทุกชีตที่มีในไฟล์ (สามารถแบ่งเป็นกี่สีก็ได้)
 Sub ColorRandomRowsBasedOnCountAllSheets()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -357,6 +367,8 @@ Sub ShuffleArray(arr() As Long)
         arr(j) = temp
     Next i
 End Sub
+
+' Copy ข้อมูลตามสีที่ตั้งค่าไว้และแยกออกเป็นชีตใหม่ (เพื่อนำไปแยกเคสในการทำงาน)
 Sub CopyRowsBasedOnColor()
     Dim ws As Worksheet
     Dim targetWsYellow As Worksheet
@@ -448,6 +460,7 @@ Sub CopyRowsBasedOnColor()
     MsgBox "Row copying completed for all colored rows!", vbInformation
 End Sub
 
+' ลบข้อมูลทุกชีต ยกเว้น ชีต NID ในไฟล์ EXCEL
 Sub DeleteAllSheetsExceptNID()
     Dim ws As Worksheet
     Application.DisplayAlerts = False
