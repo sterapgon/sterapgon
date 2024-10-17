@@ -214,34 +214,45 @@ Sub CopyRandomDataFromUserOffCod()
     Dim matchedValues As Collection
     Dim randomIndex As Long
     Dim item As Variant
-    
+    Dim randomValue As Integer ' Random value for S
+
     ' Set current worksheet
     Set wsThis = ThisWorkbook.Sheets("NID")
     
     ' Specify the path of workbook USER_OFFCOD
-    userOffCodPath = "C:\Users\nutee\Desktop\(0)DATACENTER\USER_OFFCOD_1.xlsx" ' Specify the workbook name as needed
-
+    userOffCodPath = "D:\OneDrive - Professional Computer Co.,Ltd\AUTO FROM\(0)DATACENTER\OFFCOD+BRA.xlsx"
+    
     ' Check if the workbook exists or not
     On Error Resume Next
-    Set wbUser = Workbooks.Open(userOffCodPath) ' á¡éä¢·Õè¹Õè
-    On Error GoTo 0
-    
+    Set wbUser = Workbooks.Open(userOffCodPath)
     If wbUser Is Nothing Then
         MsgBox "Cannot open USER_OFFCOD.xlsx", vbExclamation
+        Debug.Print "Error: Could not open USER_OFFCOD.xlsx"
         Exit Sub
     End If
+    On Error GoTo 0
+    Debug.Print "USER_OFFCOD opened successfully."
     
-    ' Set worksheet USER_OFFCOD
+    ' Check if worksheet OFFCID exists
+    On Error Resume Next
     Set wsUser = wbUser.Sheets("OFFCID")
+    If wsUser Is Nothing Then
+        MsgBox "Cannot find OFFCID sheet in USER_OFFCOD.xlsx", vbExclamation
+        Debug.Print "Error: Could not find OFFCID sheet"
+        wbUser.Close SaveChanges:=False
+        Exit Sub
+    End If
+    On Error GoTo 0
+    Debug.Print "OFFCID sheet found successfully."
     
-    ' Find the last row in column J of the current worksheet
-    lastRow = wsThis.Cells(wsThis.Rows.Count, "L").End(xlUp).Row
-    Debug.Print "Last row in current worksheet (PP012DATA): " & lastRow ' Debug log for last row
+    ' Find the last row in column K of the current worksheet
+    lastRow = wsThis.Cells(wsThis.Rows.Count, "K").End(xlUp).Row
+    Debug.Print "Last row in current worksheet (PP012DATA): " & lastRow
 
-    ' Loop through each value in column J starting from row 2
+    ' Loop through each value in column K starting from row 2
     For i = 2 To lastRow
-        searchValue = wsThis.Cells(i, "L").Value ' Get value from column J of current row
-        Debug.Print "Searching for value: " & searchValue & " in USER_OFFCOD" ' Debug log for search value
+        searchValue = wsThis.Cells(i, "K").Value ' Get value from column K of current row
+        Debug.Print "Searching for value: " & searchValue & " in USER_OFFCOD"
 
         ' Initialize a collection to hold matched rows
         Set matchedValues = New Collection
@@ -256,45 +267,69 @@ Sub CopyRandomDataFromUserOffCod()
         
         ' Check if there are matched values
         If matchedValues.Count > 0 Then
+            Debug.Print matchedValues.Count & " match(es) found for value: " & searchValue
+            
             ' Get a random index from the matched values
             randomIndex = Application.WorksheetFunction.RandBetween(1, matchedValues.Count)
             Set item = matchedValues(randomIndex)
+            Debug.Print "Randomly selected match from USER_OFFCOD at row: " & item.Row
             
             ' Copy data from USER_OFFCOD to this workbook based on the new mapping
-            wsThis.Cells(i, "J").Value = item.Offset(0, -2).Value ' Cell A -> Cell J
-            wsThis.Cells(i, "K").Value = item.Offset(0, -1).Value ' Cell B -> Cell K
-            wsThis.Cells(i, "X").Value = item.Offset(0, 2).Value  ' Cell E -> Cell X
-            wsThis.Cells(i, "Y").Value = item.Offset(0, 3).Value  ' Cell F -> Cell Y
-            wsThis.Cells(i, "Z").Value = item.Offset(0, 4).Value  ' Cell G -> Cell Z
-            wsThis.Cells(i, "AA").Value = item.Offset(0, 5).Value ' Cell H -> Cell AA
-            wsThis.Cells(i, "AB").Value = item.Offset(0, 6).Value ' Cell I -> Cell AB
-            wsThis.Cells(i, "AC").Value = item.Offset(0, 7).Value ' Cell J -> Cell AC
-            wsThis.Cells(i, "AD").Value = item.Offset(0, 8).Value ' Cell K -> Cell AD
-            
-            ' Set light green color to the cells where data was copied
-            wsThis.Cells(i, "J").Interior.Color = RGB(144, 238, 144) ' Cell J (copied from A)
-            wsThis.Cells(i, "K").Interior.Color = RGB(144, 238, 144) ' Cell K (copied from B)
-            wsThis.Cells(i, "X").Interior.Color = RGB(144, 238, 144) ' Cell X (copied from E)
-            wsThis.Cells(i, "Y").Interior.Color = RGB(144, 238, 144) ' Cell Y (copied from F)
-            wsThis.Cells(i, "Z").Interior.Color = RGB(144, 238, 144) ' Cell Z (copied from G)
-            wsThis.Cells(i, "AA").Interior.Color = RGB(144, 238, 144) ' Cell AA (copied from H)
-            wsThis.Cells(i, "AB").Interior.Color = RGB(144, 238, 144) ' Cell AB (copied from I)
-            wsThis.Cells(i, "AC").Interior.Color = RGB(144, 238, 144) ' Cell AC (copied from J)
-            wsThis.Cells(i, "AD").Interior.Color = RGB(144, 238, 144) ' Cell AD (copied from K)
+            wsThis.Cells(i, "I").Value = item.Offset(0, -2).Value ' Cell A -> Cell I
+            wsThis.Cells(i, "J").Value = item.Offset(0, -1).Value ' Cell B -> Cell J
+            wsThis.Cells(i, "K").Value = item.Value              ' Cell C -> Cell K
+            wsThis.Cells(i, "L").Value = item.Offset(0, 1).Value  ' Cell D -> Cell L
+            wsThis.Cells(i, "W").Value = item.Offset(0, 2).Value  ' Cell E -> Cell W
+            wsThis.Cells(i, "X").Value = item.Offset(0, 3).Value  ' Cell F -> Cell X
+            wsThis.Cells(i, "Y").Value = item.Offset(0, 4).Value  ' Cell G -> Cell Y
+            wsThis.Cells(i, "Z").Value = item.Offset(0, 5).Value  ' Cell H -> Cell Z
+            wsThis.Cells(i, "AA").Value = item.Offset(0, 6).Value ' Cell I -> Cell AA
+            wsThis.Cells(i, "AB").Value = item.Offset(0, 7).Value ' Cell J -> Cell AB
+            wsThis.Cells(i, "AC").Value = item.Offset(0, 8).Value ' Cell K -> Cell AC
 
+            ' Log each cell copied
+            Debug.Print "Data copied for row " & i & " from USER_OFFCOD"
+
+            ' Set light green color to the cells where data was copied
+            wsThis.Cells(i, "I").Interior.Color = RGB(144, 238, 144) ' Cell I
+            wsThis.Cells(i, "J").Interior.Color = RGB(144, 238, 144) ' Cell J
+            wsThis.Cells(i, "K").Interior.Color = RGB(144, 238, 144) ' Cell K
+            wsThis.Cells(i, "L").Interior.Color = RGB(144, 238, 144) ' Cell L
+            wsThis.Cells(i, "W").Interior.Color = RGB(144, 238, 144) ' Cell W
+            wsThis.Cells(i, "X").Interior.Color = RGB(144, 238, 144) ' Cell X
+            wsThis.Cells(i, "Y").Interior.Color = RGB(144, 238, 144) ' Cell Y
+            wsThis.Cells(i, "Z").Interior.Color = RGB(144, 238, 144) ' Cell Z
+            wsThis.Cells(i, "AA").Interior.Color = RGB(144, 238, 144) ' Cell AA
+            wsThis.Cells(i, "AB").Interior.Color = RGB(144, 238, 144) ' Cell AB
+            wsThis.Cells(i, "AC").Interior.Color = RGB(144, 238, 144) ' Cell AC
             
-            Debug.Print "Data copied for value: " & searchValue ' Debug log for data copied
+            ' Random value for column S (1-9)
+            randomValue = Application.WorksheetFunction.RandBetween(1, 9)
+            wsThis.Cells(i, "S").Value = randomValue
+            Debug.Print "Random value assigned to column S: " & randomValue
+            
+            ' Check if O or P are empty, if yes, set "-"
+            If IsEmpty(wsThis.Cells(i, "O").Value) Then
+                wsThis.Cells(i, "O").Value = "-"
+                Debug.Print "Column O was empty, set to '-'"
+            End If
+            If IsEmpty(wsThis.Cells(i, "P").Value) Then
+                wsThis.Cells(i, "P").Value = "-"
+                Debug.Print "Column P was empty, set to '-'"
+            End If
+
         Else
-            Debug.Print "Data not found for value: '" & searchValue & "' in USER_OFFCOD" ' Debug log for not found case
+            Debug.Print "No data found for value: '" & searchValue & "' in USER_OFFCOD"
         End If
     Next i
 
     ' Close workbook USER_OFFCOD
     wbUser.Close SaveChanges:=False
-    Debug.Print "USER_OFFCOD workbook closed." ' Debug log for workbook closure
+    Debug.Print "USER_OFFCOD workbook closed."
 End Sub
 
-' สุ่มสีในแต่ละชีท โดยแบ่งเป็น 3 สีของทุกชีตที่มีในไฟล์ (สามารถแบ่งเป็นกี่สีก็ได้)
+
+' สุ่มสีในแต่ละชีท โดยแบ่งเป็น 4 สีของทุกชีตที่มีในไฟล์ (สามารถแบ่งเป็นกี่สีก็ได้)
 Sub ColorRandomRowsBasedOnCountAllSheets()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -471,4 +506,40 @@ Sub DeleteAllSheetsExceptNID()
     Next ws
     Application.DisplayAlerts = True
 End Sub
-
+    'ลบข้อมูลทุกชีต ยกเว้นชีตที่ตั้งไว้ และ reset format ของชีตนั้นๆ ด้วย
+    Sub DeleteRowsAndClearFormatInAllSheetsExceptDataNID()
+        Dim ws As Worksheet
+        Dim lastRow As Long
+        Dim lastCol As Long
+        Dim wsName As String
+        Dim i As Long
+    
+        ' Loop through each worksheet in the workbook
+        For Each ws In ThisWorkbook.Worksheets
+            wsName = ws.Name
+            
+            ' Skip the sheet named "DATA NID"
+            If wsName <> "DATA NID" Then
+                ' Find the last used row in the sheet
+                lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+                lastCol = ws.Cells(2, ws.Columns.Count).End(xlToLeft).Column
+    
+                ' Delete rows starting from row 3 to the last row
+                If lastRow >= 3 Then
+                    For i = lastRow To 3 Step -1 ' Start from the last row and work upwards
+                        ws.Rows(i).Delete
+                    Next i
+                End If
+    
+                ' Clear any remaining formatting for the entire sheet
+                ws.Cells.ClearFormats
+    
+                ' Set the format of the remaining cells to Text (including headers)
+                ws.Cells.NumberFormat = "@"
+            End If
+        Next ws
+    
+        MsgBox "Rows deleted, formats cleared, and text format set in all sheets except DATA NID!"
+    End Sub
+    
+    

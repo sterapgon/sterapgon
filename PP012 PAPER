@@ -1,0 +1,803 @@
+Sub FillPDFPP012()
+    Dim AcroApp As Object
+    Dim AcroAVDoc As Object
+    Dim AcroPDDoc As Object
+    Dim AcroForm As Object
+    
+    Dim ws1 As Worksheet
+    Dim ws2 As Worksheet
+    Dim ws3 As Worksheet
+    Dim ws4 As Worksheet
+
+    Dim lastRow1 As Long
+    Dim lastRow2 As Long
+    Dim lastRow3 As Long
+    Dim lastRow4 As Long
+    
+    Dim i As Long, j As Long, k As Long, l As Long
+
+        Dim NID As String
+        Dim BRANUM As String
+        Dim TITNAM As String
+        Dim FIRNAM As String
+        Dim MIDNAM As String
+        Dim LASNAM As String
+        Dim LTOFLG As String
+        Dim CERTNO As String
+        Dim OFFCOD As String
+        Dim OFFNAM As String
+        Dim SUPOFFCOD As String
+        Dim SUPNAM As String
+        Dim BLDGNAM As String
+        Dim roomNo As String
+        Dim floorNo As String
+        Dim VILLAGE As String
+        Dim ADDNO As String
+        Dim moono As String
+        Dim SOINAM As String
+        Dim YAEK As String
+        Dim THNNAM As String
+        Dim TAMNAM As String
+        Dim AMPNAM As String
+        Dim PROVNAM As String
+        Dim POSCOD As String
+        Dim BRATITNAM As String
+        Dim FRIDAT_D As String
+        Dim FRIDAT_M As String
+        Dim FRIDAT_Y As String
+        Dim LASDAT_D As String
+        Dim LASDAT_M As String
+        Dim LASDAT_Y As String
+
+        Dim OVBLDGNAM As String
+        Dim OVADDNO As String
+        Dim OVTHNNAM As String
+        Dim OVCITY As String
+        Dim OVSTAT As String
+        Dim OVCON As String
+        Dim OVPOSCOD As String
+
+        Dim BRANO As String
+        Dim BRA_TITNAM As String
+        Dim BRA_BRANAM As String
+        Dim BRA_BLDGNAM As String
+        Dim BRA_ROOMNO As String
+        Dim BRA_FLOORNO As String
+        Dim BRA_VILLAGE As String
+        Dim BRA_ADDNO As String
+        Dim BRA_MOONO As String
+        Dim BRA_SOINAM As String
+        Dim BRA_YEAK As String
+        Dim BRA_THNNAM As String
+        Dim BRA_TAMNAM As String
+        Dim BRA_AMPNAM As String
+        Dim BRA_PROVNAM As String
+        Dim BRA_POSCOD As String
+        
+        Dim PA_NID As String
+        Dim PARTNO As String
+        Dim PBRANAM As String
+        Dim PBLDGNAM As String
+        Dim PROOMNO As String
+        Dim PFLOORNO As String
+        Dim PVILLAGE As String
+        Dim PADDNO As String
+        Dim PMOONO As String
+        Dim PSOINAM As String
+        Dim PYEAK As String
+        Dim PTHNNAM As String
+        Dim PTAMNAM As String
+        Dim PAMPNAM As String
+        Dim PPROVNAM As String
+        Dim PPOSCOD As String
+        Dim PFIRDAT As String
+        Dim PLASDAT As String
+        Dim PAMO As String
+
+    ' Variables for the PDF file
+    Dim PDFPath As String
+    Dim OutputPDF As String
+    
+    Dim SUPOFFNUMBER As Long
+    Dim OFFNUMBER As Long
+    Dim PrevSUPOFFCOD As String
+    Dim PrevOFFCOD As String
+    
+        SUPOFFNUMBER = 0
+        OFFNUMBER = 0
+        PrevSUPOFFCOD = ""
+        PrevOFFCOD = ""
+    
+    Dim pdfCount As Integer
+    pdfCount = 0 ' Initialize to 0
+  
+    Set ws1 = ThisWorkbook.Sheets("MAIN")
+    Set ws2 = ThisWorkbook.Sheets("COU")
+    Set ws3 = ThisWorkbook.Sheets("BRAN")
+    Set ws4 = ThisWorkbook.Sheets("PART")
+    
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).Row
+
+    Set AcroApp = CreateObject("AcroExch.App")
+
+    For i = 2 To lastRow1
+        ' Retrieve data from MAIN
+        On Error Resume Next
+        NID = ws1.Cells(i, "A").Value
+        BRANUM = ws1.Cells(i, "B").Value
+        TITNAM = ws1.Cells(i, "C").Value
+        FIRNAM = ws1.Cells(i, "D").Value
+        MIDNAM = ws1.Cells(i, "E").Value
+        LASNAM = ws1.Cells(i, "F").Value
+        LTOFLG = ws1.Cells(i, "G").Value
+        CERTNO = ws1.Cells(i, "N").Value
+        OFFCOD = ws1.Cells(i, "J").Value
+        OFFNAM = ws1.Cells(i, "K").Value
+        SUPOFFCOD = ws1.Cells(i, "L").Value
+        SUPOFFNAM = ws1.Cells(i, "M").Value
+        BLDGNAM = ws1.Cells(i, "O").Value
+        roomNo = ws1.Cells(i, "P").Value
+        floorNo = ws1.Cells(i, "Q").Value
+        VILLAGE = ws1.Cells(i, "R").Value
+        ADDNO = ws1.Cells(i, "S").Value
+        moono = ws1.Cells(i, "T").Value
+        SOINAM = ws1.Cells(i, "U").Value
+        YAEK = ws1.Cells(i, "V").Value
+        THNNAM = ws1.Cells(i, "W").Value
+        TAMNAM = ws1.Cells(i, "Y").Value
+        AMPNAM = ws1.Cells(i, "AA").Value
+        PROVNAM = ws1.Cells(i, "AC").Value
+        POSCOD = ws1.Cells(i, "AD").Value
+        BRATITNAM = ws1.Cells(i, "AE").Value
+        BRANAM = ws1.Cells(i, "AF").Value
+        FRIDAT_D = ws1.Cells(i, "AG").Value
+        FRIDAT_M = ws1.Cells(i, "AH").Value
+        FRIDAT_Y = ws1.Cells(i, "AI").Value
+        LASDAT_D = ws1.Cells(i, "AJ").Value
+        LASDAT_M = ws1.Cells(i, "AK").Value
+        LASDAT_Y = ws1.Cells(i, "AL").Value
+
+        PDFPath = ThisWorkbook.Path & "\GENPP012_PAPER.pdf"
+        Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+        
+        If AcroAVDoc.Open(PDFPath, "") Then
+            Set AcroPDDoc = AcroAVDoc.GetPDDoc
+            Set AcroForm = AcroPDDoc.GetJSObject
+'--------------------------------------------------------------------
+      If LTOFLG = 1 Then
+                    AcroForm.getField("LTO_CHK").Value = "Yes"
+                End If
+            
+               ' Check the first two digits of SUPOFFCOD
+                If Left(SUPOFFCOD, 2) < "04" Then
+                    ' Case for SUPOFFCOD
+                    AcroForm.getField("SUP_CHK").Value = "Yes"
+                    AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+            
+                    ' Check if SUPOFFCOD has changed from the previous iteration
+                    If SUPOFFCOD <> PrevSUPOFFCOD Then
+                        ' Reset SUPOFFNUMBER if the code has changed
+                        SUPOFFNUMBER = 0
+                    End If
+            
+                    ' Increment SUPOFFNUMBER and format it
+                    SUPOFFNUMBER = SUPOFFNUMBER + 1
+                    Number = Format(SUPOFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP012-P-" & Number
+            
+                    ' Store the current SUPOFFCOD as the previous one for the next iteration
+                    PrevSUPOFFCOD = SUPOFFCOD
+            
+                Else
+                    ' Case for OFFCOD
+                    AcroForm.getField("OFF_CHK").Value = "Yes"
+                    AcroForm.getField("OFFNAM").Value = OFFNAM
+            
+                    ' Check if OFFCOD has changed from the previous iteration
+                    If OFFCOD <> PrevOFFCOD Then
+                        ' Reset OFFNUMBER if the code has changed
+                        OFFNUMBER = 0
+                    End If
+            
+                    ' Increment OFFNUMBER and format it
+                    OFFNUMBER = OFFNUMBER + 1
+                    NUMBER2 = Format(OFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = OFFCOD & "-PP012-P-" & NUMBER2
+            
+                    ' Store the current OFFCOD as the previous one for the next iteration
+                    PrevOFFCOD = OFFCOD
+                End If
+            
+            ' Fill PDF fields from MAIN data
+            With AcroForm
+                .getField("NID").Value = NID
+                .getField("FIRNAM").Value = TITNAM & " " & FIRNAM
+                .getField("BIZLICNO").Value = CERTNO
+                .getField("FIRDAT.D").Value = FRIDAT_D
+                .getField("FIRDAT.M").Value = FRIDAT_M
+                .getField("FIRDAT.Y").Value = FRIDAT_Y
+                .getField("LASDAT.D").Value = LASDAT_D
+                .getField("LASDAT.M").Value = LASDAT_M
+                .getField("LASDAT.Y").Value = LASDAT_Y
+                .getField("BRANAM").Value = BRATITNAM & " " & BRANAM
+                .getField("BLDGNAM").Value = BLDGNAM
+                .getField("ROOMNO").Value = roomNo
+                .getField("FLOORNO").Value = floorNo
+                .getField("VILLAGE").Value = VILLAGE
+                .getField("ADDNO").Value = ADDNO
+                .getField("MOONO").Value = moono
+                .getField("SOINAM").Value = SOINAM
+                .getField("YAEK").Value = YAEK
+                .getField("THNNAM").Value = THNNAM
+                .getField("TAM_NAME").Value = TAMNAM
+                .getField("AMP_NAME").Value = AMPNAM
+                .getField("PROV_NAME").Value = PROVNAM
+                .getField("POSCOD").Value = POSCOD
+                .getField("BRANUM").Value = BRANUM
+                
+            End With
+
+            ' Process data from COU
+            For j = 2 To lastRow2
+                If ws2.Cells(j, "A").Value = NID Then
+                    OVBLDGNAM = ws2.Cells(j, "B").Value
+                    OVADDNO = ws2.Cells(j, "C").Value
+                    OVTHNNAM = ws2.Cells(j, "D").Value
+                    OVCITY = ws2.Cells(j, "E").Value
+                    OVSTAT = ws2.Cells(j, "F").Value
+                    OVCON = ws2.Cells(j, "H").Value
+                    OVPOSCOD = ws2.Cells(j, "I").Value
+                    
+                    With AcroForm
+                        .getField("COU_BLDGNAM").Value = OVBLDGNAM
+                        .getField("COU_ADDNO").Value = OVADDNO
+                        .getField("COU_THNNAM").Value = OVTHNNAM
+                        .getField("COU_OVCITY").Value = OVCITY
+                        .getField("COU_OVSTAT").Value = OVSTAT
+                        .getField("OVCOUCOD").Value = OVCON
+                        .getField("COU_POSCOD").Value = OVPOSCOD
+                    End With
+    
+                End If
+            Next j
+            
+            ' Process data from BRAN
+            For k = 2 To lastRow3
+                If ws3.Cells(k, "A").Value = NID Then
+                    BRANO = ws3.Cells(k, "B").Value
+                    BRA_TITNAM = ws3.Cells(k, "C").Value
+                    BRA_BRANAM = ws3.Cells(k, "D").Value
+                    BRA_BLDGNAM = ws3.Cells(k, "E").Value
+                    BRA_ROOMNO = ws3.Cells(k, "F").Value
+                    BRA_FLOORNO = ws3.Cells(k, "G").Value
+                    BRA_VILLAGE = ws3.Cells(k, "H").Value
+                    BRA_ADDNO = ws3.Cells(k, "I").Value
+                    BRA_MOONO = ws3.Cells(k, "J").Value
+                    BRA_SOINAM = ws3.Cells(k, "K").Value
+                    BRA_YEAK = ws3.Cells(k, "L").Value
+                    BRA_THNNAM = ws3.Cells(k, "M").Value
+                    BRA_TAMNAM = ws3.Cells(k, "O").Value
+                    BRA_AMPNAM = ws3.Cells(k, "Q").Value
+                    BRA_PROVNAM = ws3.Cells(k, "S").Value
+                    BRA_POSCOD = ws3.Cells(k, "T").Value
+                    
+                    
+                    If BRANO = "1" Then
+                    With AcroForm
+                        .getField("B1.BRANAM").Value = BRA_TITNAM & " " & BRA_BRANAM
+                        .getField("B1.BLDGNAM").Value = BRA_BLDGNAM
+                        .getField("B1.ROOMNO").Value = BRA_ROOMNO
+                        .getField("B1.FLOORNO").Value = BRA_FLOORNO
+                        .getField("B1.VILLAGE").Value = BRA_VILLAGE
+                        .getField("B1.ADDNO").Value = BRA_ADDNO
+                        .getField("B1.MOONO").Value = BRA_MOONO
+                        .getField("B1.SOINAM").Value = BRA_SOINAM
+                        .getField("B1.YAEK").Value = BRA_YEAK
+                        .getField("B1.THNNAM").Value = BRA_THNNAM
+                        .getField("B1.TAM_NAME").Value = BRA_TAMNAM
+                        .getField("B1.AMP_NAME").Value = BRA_AMPNAM
+                        .getField("B1.PROV_NAME").Value = BRA_PROVNAM
+                        .getField("B1.POSCOD").Value = BRA_POSCOD
+                    End With
+                    
+                    Else
+                        With AcroForm
+                        .getField("B2.BRANAM").Value = BRA_TITNAM & " " & BRA_BRANAM
+                        .getField("B2.BLDGNAM").Value = BRA_BLDGNAM
+                        .getField("B2.ROOMNO").Value = BRA_ROOMNO
+                        .getField("B2.FLOORNO").Value = BRA_FLOORNO
+                        .getField("B2.VILLAGE").Value = BRA_VILLAGE
+                        .getField("B2.ADDNO").Value = BRA_ADDNO
+                        .getField("B2.MOONO").Value = BRA_MOONO
+                        .getField("B2.SOINAM").Value = BRA_SOINAM
+                        .getField("B2.YAEK").Value = BRA_YEAK
+                        .getField("B2.THNNAM").Value = BRA_THNNAM
+                        .getField("B2.TAM_NAME").Value = BRA_TAMNAM
+                        .getField("B2.AMP_NAME").Value = BRA_AMPNAM
+                        .getField("B2.PROV_NAME").Value = BRA_PROVNAM
+                        .getField("B2.POSCOD").Value = BRA_POSCOD
+                    End With
+                End If
+                End If
+            Next k
+
+            For l = 2 To lastRow4
+                If ws4.Cells(l, "A").Value = NID Then
+                    PA_NID = ws4.Cells(l, "B").Value
+                    PARTNO = ws4.Cells(l, "C").Value
+                    PBRANAM = ws4.Cells(l, "D").Value & " " & ws4.Cells(l, "E").Value
+                    PBLDGNAM = ws4.Cells(l, "F").Value
+                    PROOMNO = ws4.Cells(l, "G").Value
+                    PFLOORNO = ws4.Cells(l, "H").Value
+                    PVILLAGE = ws4.Cells(l, "I").Value
+                    PADDNO = ws4.Cells(l, "J").Value
+                    PMOONO = ws4.Cells(l, "K").Value
+                    PSOINAM = ws4.Cells(l, "L").Value
+                    PYEAK = ws4.Cells(l, "M").Value
+                    PTHNNAM = ws4.Cells(l, "N").Value
+                    PTAMNAM = ws4.Cells(l, "P").Value
+                    PAMPNAM = ws4.Cells(l, "R").Value
+                    PPROVNAM = ws4.Cells(l, "T").Value
+                    PPOSCOD = ws4.Cells(l, "U").Value
+                    PFIRDAT = ws4.Cells(l, "V").Value
+                    PLASDAT = ws4.Cells(l, "W").Value
+                    PAMO = ws4.Cells(l, "X").Value
+                    
+
+                    If PARTNO = 1 Then
+                    With AcroForm
+                        If PBRANAM <> "" Then .getField("P1.BRANAM").Value = PBRANAM
+                        If PA_NID <> "" Then .getField("P1.NID").Value = PA_NID
+                        If PBLDGNAM <> "" Then .getField("P1.BLDGNAM").Value = PBLDGNAM
+                        If PROOMNO <> "" Then .getField("P1.ROOMNO").Value = PROOMNO
+                        If PFLOORNO <> "" Then .getField("P1.FLOORNO").Value = PFLOORNO
+                        If PVILLAGE <> "" Then .getField("P1.VILLAGE").Value = PVILLAGE
+                        If PADDNO <> "" Then .getField("P1.ADDNO").Value = PADDNO
+                        If PMOONO <> "" Then .getField("P1.MOONO").Value = PMOONO
+                        If PSOINAM <> "" Then .getField("P1.SOINAM").Value = PSOINAM
+                        If PYEAK <> "" Then .getField("P1.YAEK").Value = PYEAK
+                        If PTHNNAM <> "" Then .getField("P1.THNNAM").Value = PTHNNAM
+                        If PTAMNAM <> "" Then .getField("P1.TAMNAM").Value = PTAMNAM
+                        If PAMPNAM <> "" Then .getField("P1.AMPNAM").Value = PAMPNAM
+                        If PPROVNAM <> "" Then .getField("P1.PROV_NAME").Value = PPROVNAM
+                        If PPOSCOD <> "" Then .getField("P1.POSCOD").Value = PPOSCOD
+                        If PART_TELNO <> "" Then .getField("P1.TELNO").Value = PART_TELNO
+                        If PFIRDAT <> "" Then .getField("P1.FIRDAT").Value = PFIRDAT
+                        If PLASDAT <> "" Then .getField("P1.LASDAT").Value = PLASDAT
+                        If PAMO <> 0 Then .getField("P1.CNTAMO").Value = Format(PAMO, "#,##0.00")
+                    End With
+                    
+                    ElseIf PARTNO = 2 Then
+                    With AcroForm
+                        If PART_TITNAM <> "" Then .getField("P2.BRANAM").Value = PART_TITNAM & " " & PART_FIRNAM
+                        If PROJECT <> "" Then .getField("P2.PROJECT").Value = PROJECT
+                        If PART_NID <> "" Then .getField("P2.NID").Value = PART_NID
+                        If PART_BLDGNAM <> "" Then .getField("P2.BLDGNAM").Value = PART_BLDGNAM
+                        If PART_ROOMNO <> "" Then .getField("P2.ROOMNO").Value = PART_ROOMNO
+                        If PART_FLOORNO <> "" Then .getField("P2.FLOORNO").Value = PART_FLOORNO
+                        If PART_VILLAGE <> "" Then .getField("P2.VILLAGE").Value = PART_VILLAGE
+                        If PART_ADDNO <> "" Then .getField("P2.ADDNO").Value = PART_ADDNO
+                        If PART_MOONO <> "" Then .getField("P2.MOONO").Value = PART_MOONO
+                        If PART_SOINAM <> "" Then .getField("P2.SOINAM").Value = PART_SOINAM
+                        If PART_YAEK <> "" Then .getField("P2.YAEK").Value = PART_YAEK
+                        If PART_THNNAM <> "" Then .getField("P2.THNNAM").Value = PART_THNNAM
+                        If PART_TAM_NAME <> "" Then .getField("P2.TAMNAM").Value = PART_TAM_NAME
+                        If PART_AMP_NAME <> "" Then .getField("P2.AMPNAM").Value = PART_AMP_NAME
+                        If PART_PROV_NAME <> "" Then .getField("P2.PROV_NAME").Value = PART_PROV_NAME
+                        If PART_POSCOD <> "" Then .getField("P2.POSCOD").Value = PART_POSCOD
+                        If PART_TELNO <> "" Then .getField("P2.TELNO").Value = PART_TELNO
+                        If PART_EMAIL <> "" Then .getField("P2.EMAIL").Value = PART_EMAIL
+                        If PART_WEBSITE <> "" Then .getField("P2.WEBSITE").Value = PART_WEBSITE
+                        If PART_FIRDAT <> "" Then .getField("P2.FIRDAT").Value = PART_FIRDAT
+                        If PART_LASDAT <> "" Then .getField("P2.LASDAT").Value = PART_LASDAT
+                        If PART_CNTAMO <> 0 Then .getField("P2.CNTAMO").Value = Format(PART_CNTAMO, "#,##0.00")
+                    End With
+                    
+                    ElseIf PARTNO = 3 Then
+                    With AcroForm
+                        If PART_TITNAM <> "" Then .getField("P3.BRANAM").Value = PART_TITNAM & " " & PART_FIRNAM
+                        If PROJECT <> "" Then .getField("P3.PROJECT").Value = PROJECT
+                        If PART_NID <> "" Then .getField("P3.NID").Value = PART_NID
+                        If PART_BLDGNAM <> "" Then .getField("P3.BLDGNAM").Value = PART_BLDGNAM
+                        If PART_ROOMNO <> "" Then .getField("P3.ROOMNO").Value = PART_ROOMNO
+                        If PART_FLOORNO <> "" Then .getField("P3.FLOORNO").Value = PART_FLOORNO
+                        If PART_VILLAGE <> "" Then .getField("P3.VILLAGE").Value = PART_VILLAGE
+                        If PART_ADDNO <> "" Then .getField("P3.ADDNO").Value = PART_ADDNO
+                        If PART_MOONO <> "" Then .getField("P3.MOONO").Value = PART_MOONO
+                        If PART_SOINAM <> "" Then .getField("P3.SOINAM").Value = PART_SOINAM
+                        If PART_YAEK <> "" Then .getField("P3.YAEK").Value = PART_YAEK
+                        If PART_THNNAM <> "" Then .getField("P3.THNNAM").Value = PART_THNNAM
+                        If PART_TAM_NAME <> "" Then .getField("P3.TAMNAM").Value = PART_TAM_NAME
+                        If PART_AMP_NAME <> "" Then .getField("P3.AMPNAM").Value = PART_AMP_NAME
+                        If PART_PROV_NAME <> "" Then .getField("P3.PROV_NAME").Value = PART_PROV_NAME
+                        If PART_POSCOD <> "" Then .getField("P3.POSCOD").Value = PART_POSCOD
+                        If PART_TELNO <> "" Then .getField("P3.TELNO").Value = PART_TELNO
+                        If PART_EMAIL <> "" Then .getField("P3.EMAIL").Value = PART_EMAIL
+                        If PART_WEBSITE <> "" Then .getField("P3.WEBSITE").Value = PART_WEBSITE
+                        If PART_FIRDAT <> "" Then .getField("P3.FIRDAT").Value = PART_FIRDAT
+                        If PART_LASDAT <> "" Then .getField("P3.LASDAT").Value = PART_LASDAT
+                        If PART_CNTAMO <> 0 Then .getField("P3.CNTAMO").Value = Format(PART_CNTAMO, "#,##0.00")
+                    End With
+                        
+                        Exit For
+                    End If
+                End If
+            Next l
+
+ ' Save the filled PDF
+        Dim FileNumber As Integer
+        Dim FileName As String
+        Dim folderPath As String
+        
+    ' Check the first two digits of SUPOFFCOD
+    If Left(SUPOFFCOD, 2) < "04" Then
+        ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & SUPOFFCOD & "\"
+        FileName = folderPath & SUPOFFCOD & "-PP012-P-"
+    Else
+        ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & OFFCOD & "\"
+        FileName = folderPath & OFFCOD & "-PP012-P-"
+    End If
+
+    ' Check if the folder exists, if not, create it
+    If Dir(folderPath, vbDirectory) = "" Then
+        MkDir folderPath
+    End If
+
+    ' Check for existing files and generate a unique name
+    FileNumber = 1
+    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+        FileNumber = FileNumber + 1
+    Loop
+
+    ' Construct the final file name
+    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+
+    ' Save the PDF file
+    Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+    AcroPDDoc.Save 1, OutputPDF
+    AcroAVDoc.Close False
+
+    ' Count the number of PDFs generated
+    pdfCount = pdfCount + 1
+
+End If
+On Error GoTo 0 ' Reset error handling after critical code
+NextIteration:
+Next i
+
+' Display a message after completion
+MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+End Sub
+
+Sub ImportDataFromPP01()
+
+    ' Declare variables
+    Dim ws1 As Worksheet, wsCurrent As Worksheet
+    Dim wbSource As Workbook
+    Dim lastRow1 As Long
+    Dim i As Long
+    Dim sourcePath As String
+    Dim sourceFileName As String
+    
+    ' Define current workbook and worksheet
+    Set wsCurrent = ThisWorkbook.Sheets("MAIN")
+    
+    ' Define the path and source file name
+    sourcePath = ThisWorkbook.Path & "\"
+    sourceFileName = "(1)ALLDATAPP012.xlsm"
+    
+    ' Log the source path and file name
+    Debug.Print "Source Path: " & sourcePath
+    Debug.Print "Source File Name: " & sourceFileName
+    
+    ' Open the source workbook (ALLDATAPP01.xlsm)
+    Set wbSource = Workbooks.Open(sourcePath & sourceFileName)
+    Set ws1 = wbSource.Sheets("PP012_PAPER")
+    
+    ' Log when the source workbook is opened
+    Debug.Print "Opened workbook: " & wbSource.Name
+    Debug.Print "Working on sheet: " & ws1.Name
+    
+    ' Find the last row with data in the source sheet
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    Debug.Print "Last row in source sheet: " & lastRow1
+    
+    ' Loop through each row in the source sheet starting from row 2
+    For i = 2 To lastRow1
+        ' Log the current row being processed
+        Debug.Print "Processing row: " & i
+        
+        ' คัดลอกค่าแต่ละเซลล์จาก ws1 ไปยัง wsCurrent
+        wsCurrent.Cells(i, "A").Value = "'" & ws1.Cells(i, "A").Value  ' NID with leading '
+        wsCurrent.Cells(i, "C").Value = ws1.Cells(i, "C").Value  ' TITNAM
+        wsCurrent.Cells(i, "D").Value = ws1.Cells(i, "D").Value  ' FIRNAM
+        wsCurrent.Cells(i, "E").Value = ws1.Cells(i, "E").Value  ' MIDNAM
+        wsCurrent.Cells(i, "F").Value = ws1.Cells(i, "F").Value  ' LASNAM
+        wsCurrent.Cells(i, "H").Value = ws1.Cells(i, "H").Value  ' ENGNAM
+        wsCurrent.Cells(i, "I").Value = ws1.Cells(i, "G").Value  ' IMPIDAT
+        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "I").Value  ' OFFCOD
+        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "J").Value  ' OFFNAM
+        wsCurrent.Cells(i, "K").Value = ws1.Cells(i, "K").Value  ' SUPOFFCOD
+        wsCurrent.Cells(i, "L").Value = ws1.Cells(i, "L").Value  ' SUPOFFNAM
+        wsCurrent.Cells(i, "M").Value = ws1.Cells(i, "M").Value  ' IMPORG
+        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "N").Value  ' BLDGNAM
+        wsCurrent.Cells(i, "O").Value = ws1.Cells(i, "O").Value  ' ROOMNO
+        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "P").Value  ' FLOORNO
+        wsCurrent.Cells(i, "Q").Value = ws1.Cells(i, "Q").Value  ' VILLAGE
+        wsCurrent.Cells(i, "R").Value = ws1.Cells(i, "R").Value  ' ADDNO
+        wsCurrent.Cells(i, "S").Value = ws1.Cells(i, "S").Value  ' MOONO
+        wsCurrent.Cells(i, "T").Value = ws1.Cells(i, "T").Value  ' SOINAM
+        wsCurrent.Cells(i, "U").Value = ws1.Cells(i, "U").Value  ' YAEK
+        wsCurrent.Cells(i, "V").Value = ws1.Cells(i, "V").Value  ' THNNAM
+        wsCurrent.Cells(i, "W").Value = ws1.Cells(i, "W").Value  ' TAMCOD
+        wsCurrent.Cells(i, "X").Value = ws1.Cells(i, "X").Value  ' TAMNAM
+        wsCurrent.Cells(i, "Y").Value = ws1.Cells(i, "Y").Value ' AMPCOD
+        wsCurrent.Cells(i, "Z").Value = ws1.Cells(i, "Z").Value ' AMPNAM
+        wsCurrent.Cells(i, "AA").Value = ws1.Cells(i, "AA").Value ' PROVCOD
+        wsCurrent.Cells(i, "AB").Value = ws1.Cells(i, "AB").Value ' PROVNAM
+        wsCurrent.Cells(i, "AC").Value = ws1.Cells(i, "AC").Value ' PASCOD
+        wsCurrent.Cells(i, "AD").Value = ws1.Cells(i, "AD").Value
+
+        
+        ' Log the NID and other key data being imported for this row
+        Debug.Print "NID: " & ws1.Cells(i, "A").Value & " | TITNAM: " & ws1.Cells(i, "C").Value & _
+                    " | FIRNAM: " & ws1.Cells(i, "D").Value & " | SUPOFFNAM: " & ws1.Cells(i, "L").Value
+    Next i
+
+    ' Close the source workbook without saving
+    wbSource.Close False
+    Debug.Print "Closed workbook: " & sourceFileName
+
+    ' Inform the user that the process is complete
+    MsgBox "Data imported successfully from ALLDATAPP01.xlsm", vbInformation
+
+End Sub
+Sub GenerateRandomNumbersInN()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim prefix As String
+    Dim currentYear As String
+    Dim randomNumber As Integer
+    Dim generatedValue As String
+
+    ' Set the worksheet
+    Set ws = ThisWorkbook.Sheets("MAIN") ' Change to your actual sheet name
+
+    ' Find the last row in column L
+    lastRow = ws.Cells(ws.Rows.Count, "L").End(xlUp).Row
+
+    ' Get the current Thai year
+    currentYear = Year(Date) + 543 ' Convert to Thai year
+
+    ' Loop through each row
+    For i = 3 To lastRow ' Start from row 2 (assuming row 1 is headers)
+        ' Get the first 5 characters from cell L
+        If Len(ws.Cells(i, "L").Value) >= 5 Then
+            prefix = Left(ws.Cells(i, "L").Value, 5)
+        Else
+            prefix = ws.Cells(i, "L").Value ' If less than 5 characters, use the whole value
+        End If
+        
+        ' Generate a random 3-digit number
+        randomNumber = Application.WorksheetFunction.RandBetween(0, 999)
+        
+        ' Create the new value in the desired format
+        generatedValue = prefix & "/" & Format(randomNumber, "000") & "/" & currentYear ' Combine values with slashes
+
+        ' Assign the value to cell N
+        ws.Cells(i, "N").Value = generatedValue
+    Next i
+
+    MsgBox "Random number generation in cell N completed!", vbInformation
+End Sub
+Sub RANDOM_BRAN()
+    Dim ws1 As Worksheet, ws2 As Worksheet, wsAddress As Worksheet
+    Dim lastRow1 As Long, lastRow2 As Long, lastRowAddress As Long
+    Dim i As Long, j As Long
+    Dim NID As String, BRANAM As String, TITCOD As String
+    Dim BRATITNAM As String ' New variable for TITNAM
+    Dim BLDGNAM As String, roomNo As String, floorNo As String, VILLAGE As String
+    Dim ADDNO As String, moono As String, SOINAM As String, YAEK As String
+    Dim THNNAM As String, TAMCOD As String, PROVCOD As String
+    Dim AMPCOD As String, POSCOD As String
+    Dim TAMNAM As String, AMPNAM As String, PROVNAM As String
+    Dim NewBRANO As String
+    Dim randomRow As Long
+
+    ' Set the worksheets to the respective sheet names
+    Set ws1 = ThisWorkbook.Sheets("MAIN")
+    Set ws2 = ThisWorkbook.Sheets("BRAN")
+    Set wsAddress = ThisWorkbook.Sheets("DBADDRESS")
+
+    ' Find the last row with data in NID_DETAIL and DBADDRESS
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRowAddress = wsAddress.Cells(wsAddress.Rows.Count, "A").End(xlUp).Row
+
+    Debug.Print "Last row in NID_DETAIL: " & lastRow1
+    Debug.Print "Last row in DBADDRESS: " & lastRowAddress
+
+    ' Loop through each row in NID_DETAIL and generate random BRANO
+    For i = 2 To lastRow1
+        ' Get NID and BRANAM from current row
+        NID = ws1.Cells(i, "A").Value
+        BRATITNAM = ws1.Cells(i, "C").Value ' Get BRATITNAM from column C
+        BRANAM = ws1.Cells(i, "D").Value ' Get BRANAM from column D
+
+        Debug.Print "Processing NID: " & NID
+
+        ' Generate 2 branches (BRANO)
+        For j = 1 To 2
+            ' Assign NewBRANO as 1 or 2
+            NewBRANO = j
+            Debug.Print "Creating branch: " & NewBRANO
+
+            ' Get random row from DBADDRESS for address details
+            randomRow = Int((lastRowAddress - 2 + 1) * Rnd + 2)
+            Debug.Print "Random row selected from DBADDRESS: " & randomRow
+
+            ' Fetch random address details from DBADDRESS
+            BLDGNAM = wsAddress.Cells(randomRow, "A").Value
+            roomNo = wsAddress.Cells(randomRow, "B").Value
+            floorNo = wsAddress.Cells(randomRow, "C").Value
+            VILLAGE = wsAddress.Cells(randomRow, "D").Value
+            ADDNO = wsAddress.Cells(randomRow, "E").Value
+            moono = wsAddress.Cells(randomRow, "F").Value
+            SOINAM = wsAddress.Cells(randomRow, "G").Value
+            YAEK = wsAddress.Cells(randomRow, "H").Value
+            THNNAM = wsAddress.Cells(randomRow, "I").Value
+            TAMCOD = wsAddress.Cells(randomRow, "J").Value
+            AMPCOD = wsAddress.Cells(randomRow, "K").Value
+            PROVCOD = wsAddress.Cells(randomRow, "L").Value
+            POSCOD = wsAddress.Cells(randomRow, "M").Value
+            TAMNAM = wsAddress.Cells(randomRow, "N").Value
+            AMPNAM = wsAddress.Cells(randomRow, "O").Value
+            PROVNAM = wsAddress.Cells(randomRow, "P").Value
+
+            Debug.Print "Address selected - BLDGNAM: " & BLDGNAM & ", ROOMNO: " & roomNo & ", TAMNAM: " & TAMNAM
+
+            ' Insert the new random branch data into BRANO_DETAIL
+            lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row + 1
+            ws2.Cells(lastRow2, "A").Value = NID
+            ws2.Cells(lastRow2, "B").Value = NewBRANO
+            ws2.Cells(lastRow2, "C").Value = BRATITNAM ' Insert BRATITNAM into column C
+            ws2.Cells(lastRow2, "D").Value = BRANAM & " BRANO " & NewBRANO ' Insert BRANAM into column D
+            ws2.Cells(lastRow2, "E").Value = BLDGNAM
+            ws2.Cells(lastRow2, "F").Value = roomNo
+            ws2.Cells(lastRow2, "G").Value = floorNo
+            ws2.Cells(lastRow2, "H").Value = VILLAGE
+            ws2.Cells(lastRow2, "I").Value = ADDNO
+            ws2.Cells(lastRow2, "J").Value = moono
+            ws2.Cells(lastRow2, "K").Value = SOINAM
+            ws2.Cells(lastRow2, "L").Value = YAEK
+            ws2.Cells(lastRow2, "M").Value = THNNAM
+            ws2.Cells(lastRow2, "N").Value = TAMCOD
+            ws2.Cells(lastRow2, "P").Value = AMPCOD
+            ws2.Cells(lastRow2, "R").Value = PROVCOD
+            ws2.Cells(lastRow2, "T").Value = POSCOD
+            ws2.Cells(lastRow2, "O").Value = TAMNAM
+            ws2.Cells(lastRow2, "Q").Value = AMPNAM
+            ws2.Cells(lastRow2, "S").Value = PROVNAM
+
+            Debug.Print "Inserted new branch for NID: " & NID & " with BRANO: " & NewBRANO
+        Next j
+    Next i
+
+    MsgBox "Branches created successfully for all NID in Sheet1!"
+End Sub
+Sub CountMatchingValues()
+    Dim wsNID As Worksheet
+    Dim wsBRANO As Worksheet
+    Dim lastRowNID As Long
+    Dim lastRowBRANO As Long
+    Dim NID As Variant
+    Dim countBRANO As Long
+    Dim i As Long, j As Long
+
+    Set wsNID = ThisWorkbook.Sheets("MAIN")
+    Set wsBRANO = ThisWorkbook.Sheets("BRAN")
+    
+    lastRowNID = wsNID.Cells(wsNID.Rows.Count, "A").End(xlUp).Row
+    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.Count, "A").End(xlUp).Row
+    
+    ' Debug log - starting the process
+    Debug.Print "Starting to count matching values between MAIN and BRAN sheets"
+
+    For i = 2 To lastRowNID
+        NID = wsNID.Cells(i, "A").Value
+        countBRANO = 0
+        
+        ' Debug log - current NID being processed
+        Debug.Print "Processing NID: " & NID
+        
+        For j = 2 To lastRowBRANO
+            If wsBRANO.Cells(j, "A").Value = NID And wsBRANO.Cells(j, "B").Value > 0 Then
+                countBRANO = countBRANO + 1
+                
+                ' Debug log - matching value found
+                Debug.Print "Match found for NID " & NID & " in BRAN at row " & j & ", count now: " & countBRANO
+            End If
+        Next j
+        
+        wsNID.Cells(i, "B").Value = countBRANO
+        
+        ' Debug log - final count for the current NID
+        Debug.Print "Total matches for NID " & NID & ": " & countBRANO
+    Next i
+    
+    ' Debug log - finished processing
+    Debug.Print "Finished counting matching values"
+End Sub
+Sub AssignRandomAddressData()
+    Dim ws1 As Worksheet ' MAIN
+    Dim ws2 As Worksheet ' COU
+    Dim wsAddress As Worksheet ' COUADDRESS
+    Dim lastRowMain As Long
+    Dim lastRowAddress As Long
+    Dim i As Long
+    Dim randomRow As Long
+    Dim log As String ' Debug log string
+
+    ' Set worksheets
+    Set ws1 = ThisWorkbook.Sheets("MAIN")
+    Set ws2 = ThisWorkbook.Sheets("COU")
+    Set wsAddress = ThisWorkbook.Sheets("COUADDRESS")
+
+    ' Get last rows in each sheet
+    lastRowMain = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRowAddress = wsAddress.Cells(wsAddress.Rows.Count, "A").End(xlUp).Row
+
+    ' Check if COUADDRESS has enough rows
+    If lastRowAddress < 2 Then
+        MsgBox "The COUADDRESS sheet does not contain enough data.", vbExclamation
+        Exit Sub
+    End If
+
+    ' Loop through each NID in the MAIN sheet starting from row 2
+    For i = 2 To lastRowMain
+        ' Get the NID from the MAIN sheet
+        Dim NID As Variant
+        NID = ws1.Cells(i, "A").Value
+        
+        ' Get a random row from COUADDRESS
+        randomRow = Application.WorksheetFunction.RandBetween(2, lastRowAddress)
+
+        ' Fill the corresponding data in COU sheet
+        ws2.Cells(i, "A").Value = "'" & NID ' NID
+        ws2.Cells(i, "B").Value = wsAddress.Cells(randomRow, "A").Value ' OVBLDGNAM
+        ws2.Cells(i, "C").Value = wsAddress.Cells(randomRow, "B").Value ' OVADDNO
+        ws2.Cells(i, "D").Value = wsAddress.Cells(randomRow, "C").Value ' OVTHNNAM
+        ws2.Cells(i, "E").Value = wsAddress.Cells(randomRow, "D").Value ' OVCITY
+        ws2.Cells(i, "F").Value = wsAddress.Cells(randomRow, "E").Value ' OVSTAT
+        ws2.Cells(i, "G").Value = wsAddress.Cells(randomRow, "F").Value ' OVCOUCOD
+        ws2.Cells(i, "H").Value = wsAddress.Cells(randomRow, "G").Value ' OVCOUNAM
+        ws2.Cells(i, "I").Value = wsAddress.Cells(randomRow, "H").Value '
+        ws2.Cells(i, "J").Value = wsAddress.Cells(randomRow, "I").Value '
+
+        ' Debug logging and null check
+        log = "Row " & i & ": "
+        Dim j As Long
+        For j = 1 To 9 ' Check cells B to J
+            If ws2.Cells(i, j + 1).Value = "(null)" Then
+                ws2.Cells(i, j + 1).ClearContents
+                log = log & "Cell " & ws2.Cells(i, j + 1).Address & " cleared (was '(null)'). "
+            Else
+                log = log & "Cell " & ws2.Cells(i, j + 1).Address & " = " & ws2.Cells(i, j + 1).Value & ". "
+            End If
+        Next j
+        Debug.Print log ' Output debug log to Immediate Window
+    Next i
+
+    ' Notify that the operation is complete
+    MsgBox "Address data assigned successfully!", vbInformation
+End Sub
+
