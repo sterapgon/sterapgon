@@ -172,6 +172,7 @@ Sub FillPDFWithMultipleSheet_PP01()
 
     ' Loop through all records in Sheet1
     For i = 2 To lastRow1
+          On Error Resume Next
         ' Retrieve data from Sheet1 (NID DETAIL)
         NID = ws1.Cells(i, "A").Value
         NATION = ws1.Cells(i, "B").Value
@@ -269,7 +270,7 @@ Sub FillPDFWithMultipleSheet_PP01()
     End If
                                       
                 ' Fill PDF fields for NID AND DETAIL
-                AcroForm.getField("NID").Value = NID
+                AcroForm.getField("NID").Value = CStr(NID) ' Convert NID to text (string)
                 AcroForm.getField("PERNAM").Value = FIRNAM
                     
                 If Val(Left(NID, 1)) > 0 Then
@@ -619,38 +620,19 @@ Sub FillPDFWithMultipleSheet_PP01()
     ' Count the number of PDFs generated
     pdfCount = pdfCount + 1
 
+        ' Release Acrobat objects to free memory
+        Set AcroForm = Nothing
+        Set AcroPDDoc = Nothing
+        If Not AcroAVDoc Is Nothing Then
+            AcroAVDoc.Close False
+        End If
+        Set AcroAVDoc = Nothing
 End If
 End If
+On Error GoTo 0 ' Reset error handling after critical code
 NextIteration:
 Next i
 
 ' Display a message after completion
 MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
-End Sub
-
-Sub ClearCellsWithLongTextAndDeleteEmptyRows()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim i As Long
-
-    ' Set the current worksheet
-    Set ws = ThisWorkbook.Sheets("TRDBGOO") ' Change the sheet name as needed
-
-    ' Find the last row in the sheet
-    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row ' Adjust "A" to the column you want to check
-
-    ' Loop through each cell from the bottom up to avoid skipping rows when deleting
-    For i = lastRow To 1 Step -1
-        ' Clear cell if the text is longer than 30 characters
-        If Len(ws.Cells(i, "C").Value) > 30 Then ' Adjust "A" to the column you want to check
-            ws.Cells(i, "C").ClearContents
-        End If
-
-        ' Check if column C is empty, and delete the row if true
-        If ws.Cells(i, "C").Value = "" Then
-            ws.Rows(i).Delete
-        End If
-    Next i
-
-    MsgBox "Cleared cells with long text and deleted empty rows in column C!"
 End Sub
