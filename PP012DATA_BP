@@ -1,0 +1,326 @@
+Sub CopyRandomDataFromUserOffCod()
+    Dim wbUser As Workbook
+    Dim wsThis As Worksheet, wsUser As Worksheet
+    Dim searchValue As String
+    Dim foundCell As Range
+    Dim userOffCodPath As String
+    Dim lastRow As Long
+    Dim i As Long
+    Dim matchedValues As Collection
+    Dim randomIndex As Long
+    Dim item As Variant
+    
+    ' Set current worksheet
+    Set wsThis = ThisWorkbook.Sheets("NID")
+    
+    ' Specify the path of workbook USER_OFFCOD
+    userOffCodPath = "C:\Users\nutee\Desktop\(0)DATACENTER\USER_OFFCOD_1.xlsx" ' Specify the workbook name as needed
+
+    ' Check if the workbook exists or not
+    On Error Resume Next
+    Set wbUser = Workbooks.Open(userOffCodPath)
+    On Error GoTo 0
+    
+    If wbUser Is Nothing Then
+        MsgBox "Cannot open USER_OFFCOD.xlsx", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Set worksheet USER_OFFCOD
+    Set wsUser = wbUser.Sheets("Sheet1")
+    
+    ' Find the last row in column L of the current worksheet
+    lastRow = wsThis.Cells(wsThis.Rows.Count, "L").End(xlUp).Row
+    Debug.Print "Last row in current worksheet (NID): " & lastRow ' Debug log for last row
+
+    ' Loop through each value in column L starting from row 2
+    For i = 2 To lastRow
+        searchValue = wsThis.Cells(i, "L").Value ' Get value from column L of current row
+        Debug.Print "Searching for value: " & searchValue & " in USER_OFFCOD" ' Debug log for search value
+
+        ' Initialize a collection to hold matched rows
+        Set matchedValues = New Collection
+
+        ' Find all matching values in USER_OFFCOD (Column C)
+        For Each foundCell In wsUser.Columns("C").Cells
+            If foundCell.Value = "" Then Exit For ' Stop if empty cell is encountered
+            If foundCell.Value = searchValue Then
+                matchedValues.Add foundCell
+            End If
+        Next foundCell
+        
+        ' Check if there are matched values
+        If matchedValues.Count > 0 Then
+            ' Get a random index from the matched values
+            randomIndex = Application.WorksheetFunction.RandBetween(1, matchedValues.Count)
+            Set item = matchedValues(randomIndex)
+            
+            ' Copy data from USER_OFFCOD to this workbook
+            wsThis.Cells(i, "J").Value = item.Offset(0, -2).Value ' USER_OFFCOD A -> NID J
+            wsThis.Cells(i, "K").Value = item.Offset(0, -1).Value ' USER_OFFCOD B -> NID K
+            wsThis.Cells(i, "L").Value = item.Value ' USER_OFFCOD C -> NID L
+            wsThis.Cells(i, "M").Value = item.Offset(0, 1).Value ' USER_OFFCOD D -> NID M
+            wsThis.Cells(i, "X").Value = item.Offset(0, 2).Value ' USER_OFFCOD E -> NID X
+            wsThis.Cells(i, "Y").Value = item.Offset(0, 3).Value ' USER_OFFCOD F -> NID Y
+            wsThis.Cells(i, "Z").Value = item.Offset(0, 4).Value ' USER_OFFCOD G -> NID Z
+            wsThis.Cells(i, "AA").Value = item.Offset(0, 5).Value ' USER_OFFCOD H -> NID AA
+            wsThis.Cells(i, "AB").Value = item.Offset(0, 6).Value ' USER_OFFCOD I -> NID AB
+            wsThis.Cells(i, "AC").Value = item.Offset(0, 7).Value ' USER_OFFCOD J -> NID AC
+            wsThis.Cells(i, "AD").Value = item.Offset(0, 8).Value ' USER_OFFCOD K -> NID AD
+            
+            ' Set light green color to the cells where data was copied
+            wsThis.Cells(i, "J").Interior.Color = RGB(144, 238, 144) ' Cell J
+            wsThis.Cells(i, "K").Interior.Color = RGB(144, 238, 144) ' Cell K
+            wsThis.Cells(i, "L").Interior.Color = RGB(144, 238, 144) ' Cell L
+            wsThis.Cells(i, "M").Interior.Color = RGB(144, 238, 144) ' Cell M
+            wsThis.Cells(i, "X").Interior.Color = RGB(144, 238, 144) ' Cell X
+            wsThis.Cells(i, "Y").Interior.Color = RGB(144, 238, 144) ' Cell Y
+            wsThis.Cells(i, "Z").Interior.Color = RGB(144, 238, 144) ' Cell Z
+            wsThis.Cells(i, "AA").Interior.Color = RGB(144, 238, 144) ' Cell AA
+            wsThis.Cells(i, "AB").Interior.Color = RGB(144, 238, 144) ' Cell AB
+            wsThis.Cells(i, "AC").Interior.Color = RGB(144, 238, 144) ' Cell AC
+            wsThis.Cells(i, "AD").Interior.Color = RGB(144, 238, 144) ' Cell AD
+            
+            Debug.Print "Data copied for value: " & searchValue ' Debug log for data copied
+        Else
+            Debug.Print "Data not found for value: '" & searchValue & "' in USER_OFFCOD" ' Debug log for not found case
+        End If
+    Next i
+
+    ' Close workbook USER_OFFCOD
+    wbUser.Close SaveChanges:=False
+    Debug.Print "USER_OFFCOD workbook closed." ' Debug log for workbook closure
+End Sub
+Sub GenerateHouseNumberAndRemoveNulls()
+    Dim ws As Worksheet
+    Dim searchValue As String
+    Dim houseNumber As String
+    Dim randomNumber As Integer
+    Dim randomT As Integer
+    Dim lastRow As Long
+    Dim i As Long
+    Dim j As Long
+
+    ' Set the current worksheet
+    Set ws = ThisWorkbook.Sheets("NID")
+
+    ' Find the last row with data
+    lastRow = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+
+    ' Loop through each row to check for "(null)" values in each cell
+    For i = 2 To lastRow
+        ' Loop through all columns in the row
+        For j = 1 To ws.Columns.Count
+            If ws.Cells(i, j).Value = "(null)" Then
+                ws.Cells(i, j).ClearContents ' Clear only the cell with "(null)"
+            End If
+        Next j
+    Next i
+
+    ' Update the last row after clearing "(null)"
+    lastRow = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+
+    ' Loop through each cell in column J starting from row 2 to the last row with data
+    For i = 2 To lastRow
+        ' Get the value from cell J
+        searchValue = ws.Cells(i, "J").Value
+        
+        ' Get the first 4 characters and trim leading zeros
+        If Len(searchValue) >= 4 Then
+            houseNumber = Right("0000" & Left(searchValue, 4), 4) ' Get the first 4 characters
+            houseNumber = CStr(Val(houseNumber)) ' Convert to numeric to remove leading zeros
+        Else
+            houseNumber = searchValue ' If less than 4 characters, keep it as is
+        End If
+        
+        ' Generate a random number up to 999 (3 digits)
+        randomNumber = Application.WorksheetFunction.RandBetween(0, 999)
+        
+        ' Combine house number with random number
+        ws.Cells(i, "S").Value = houseNumber & "/" & Format(randomNumber, "000") ' Format random number to 3 digits
+        
+        ' Generate a random number between 1 and 9 for column T
+        randomT = Application.WorksheetFunction.RandBetween(1, 9)
+        ws.Cells(i, "T").Value = randomT ' Set random number in column T
+    Next i
+
+    MsgBox "House numbers generated and '(null)' values cleared successfully!"
+End Sub
+
+Sub SplitDataBasedOnColumnJ()
+    Dim wsSource As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim sheetName As String
+    Dim cellValue As String
+    Dim targetWs As Worksheet
+    Dim dataRange As Range
+    Dim wsDict As Object
+
+    ' Set the source worksheet
+    Set wsSource = ThisWorkbook.Sheets("NID")
+
+    ' Find the last row in column K of the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "J").End(xlUp).Row
+
+    ' Create a dictionary to track created sheets
+    Set wsDict = CreateObject("Scripting.Dictionary")
+
+    ' Loop through the rows in column K starting from row 2
+    For i = 2 To lastRow
+        cellValue = wsSource.Cells(i, "J").Value
+
+        ' Get the first 5 characters from the value in column K
+        If Len(cellValue) >= 5 Then
+            sheetName = Left(cellValue, 5)
+
+            ' Check if the sheet with this name already exists
+            If Not wsDict.exists(sheetName) Then
+                ' If the sheet doesn't exist, create it
+                Set targetWs = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+                targetWs.Name = sheetName
+                wsDict.Add sheetName, targetWs.Name
+
+                ' Copy headers from the source sheet to the new sheet
+                wsSource.Rows(1).Copy targetWs.Rows(1)
+            End If
+
+            ' Get the sheet where the data should be copied
+            Set targetWs = ThisWorkbook.Sheets(wsDict(sheetName))
+
+            ' Copy the entire row to the target sheet
+            wsSource.Rows(i).Copy targetWs.Rows(targetWs.Cells(targetWs.Rows.Count, "A").End(xlUp).Row + 1)
+        End If
+    Next i
+
+    MsgBox "Data has been split based on column J."
+End Sub
+
+Sub ColorRandomRowsBasedOnCountAllSheets()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim groupSize As Long
+    Dim randomRow As Long
+    Dim randomRows() As Long
+    Dim rng As Range
+    
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Count the total number of rows with data in column A for each sheet
+        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+        
+        ' Check if there are enough rows to color
+        If lastRow > 1 Then ' Ensure there's more than one row with data
+            ' Calculate the number of rows to color (half will get one color, the other half another color)
+            groupSize = (lastRow - 1) \ 2 ' Split into two equal groups
+            
+            ' Create an array to hold random rows
+            ReDim randomRows(1 To lastRow - 1)
+            For i = 1 To lastRow - 1
+                randomRows(i) = i + 1 ' Store row numbers starting from 2
+            Next i
+            
+            ' Shuffle the array
+            Call ShuffleArray(randomRows)
+            
+            ' Apply color to the randomly selected rows
+            For i = 1 To lastRow - 1
+                Dim rowIndex As Long
+                rowIndex = randomRows(i)
+                
+                If i <= groupSize Then
+                    ' Apply the first light color to the first half of rows
+                    ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 204) ' Light yellow
+                Else
+                    ' Apply the second light color to the second half of rows
+                    ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 255) ' Light blue
+                End If
+            Next i
+        End If
+    Next ws
+
+    ' Notify that the operation is complete
+    MsgBox "Row coloring completed for all sheets with random grouping of 2 colors!", vbInformation
+End Sub
+
+' ShuffleArray subroutine for randomizing rows
+Sub ShuffleArray(arr() As Long)
+    Dim i As Long
+    Dim j As Long
+    Dim temp As Long
+    Dim n As Long
+    n = UBound(arr)
+    For i = 1 To n
+        j = Application.WorksheetFunction.RandBetween(1, n)
+        temp = arr(i)
+        arr(i) = arr(j)
+        arr(j) = temp
+    Next i
+End Sub
+Sub CopyRowsBasedOnColor()
+    Dim ws As Worksheet
+    Dim targetWsYellow As Worksheet
+    Dim targetWsBlue As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim targetRowYellow As Long
+    Dim targetRowBlue As Long
+
+    ' Create new sheets for each color
+    Set targetWsYellow = ThisWorkbook.Sheets.Add
+    targetWsYellow.Name = "YellowRows"
+
+    Set targetWsBlue = ThisWorkbook.Sheets.Add
+    targetWsBlue.Name = "BlueRows"
+
+    ' Initialize target rows for each color (start at row 1)
+    targetRowYellow = 1
+    targetRowBlue = 1
+
+    ' Debug log - starting the process
+    Debug.Print "Starting to process all sheets to find colored rows"
+
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Skip the newly created sheets
+        If ws.Name <> "YellowRows" And ws.Name <> "BlueRows" Then
+            ' Debug log - current sheet being processed
+            Debug.Print "Processing sheet: " & ws.Name
+            
+            ' Count the total number of rows with data in column A for each sheet
+            lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+            ' Debug log - number of rows in the current sheet
+            Debug.Print "Total rows in sheet " & ws.Name & ": " & lastRow
+
+            ' Loop through the rows and check the background color
+            For i = 2 To lastRow ' Start from row 2 (skip header)
+                With ws.Rows(i).Interior
+                    ' Check if the row is yellow (RGB(255, 255, 204))
+                    If .Color = RGB(255, 255, 204) Then
+                        ' Copy the row to the YellowRows sheet
+                        ws.Rows(i).Copy targetWsYellow.Rows(targetRowYellow)
+                        targetRowYellow = targetRowYellow + 1 ' Move to the next row in YellowRows sheet
+                        Debug.Print "Copied row " & i & " from sheet " & ws.Name & " to YellowRows"
+
+                    ' Check if the row is blue (RGB(204, 255, 255))
+                    ElseIf .Color = RGB(204, 255, 255) Then
+                        ' Copy the row to the BlueRows sheet
+                        ws.Rows(i).Copy targetWsBlue.Rows(targetRowBlue)
+                        targetRowBlue = targetRowBlue + 1 ' Move to the next row in BlueRows sheet
+                        Debug.Print "Copied row " & i & " from sheet " & ws.Name & " to BlueRows"
+                    End If
+                End With
+            Next i
+        End If
+    Next ws
+
+    ' Debug log - finished processing
+    Debug.Print "Finished processing all sheets"
+    
+    ' Notify that the operation is complete
+    MsgBox "Row copying completed for all colored rows!", vbInformation
+End Sub
+
+
+
