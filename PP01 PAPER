@@ -634,11 +634,7 @@ Sub FillPDFWithMultipleSheet_PP01()
 NextIteration:
     Next i
     
-    ' Cleanup Acrobat application
-    If Not AcroApp Is Nothing Then
-        AcroApp.Exit
-    End If
-    Set AcroApp = Nothing
+
     
     ' Display a message after completion
     MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
