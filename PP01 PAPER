@@ -624,15 +624,22 @@ Sub FillPDFWithMultipleSheet_PP01()
         Set AcroForm = Nothing
         Set AcroPDDoc = Nothing
         If Not AcroAVDoc Is Nothing Then
-            AcroAVDoc.Close False
+            AcroAVDoc.C lose False
         End If
         Set AcroAVDoc = Nothing
-End If
-End If
-On Error GoTo 0 ' Reset error handling after critical code
-NextIteration:
-Next i
 
-' Display a message after completion
-MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
-End Sub
+    End If
+    End If
+    On Error GoTo 0 ' Reset error handling after critical code
+NextIteration:
+    Next i
+    
+    ' Cleanup Acrobat application
+    If Not AcroApp Is Nothing Then
+        AcroApp.Exit
+    End If
+    Set AcroApp = Nothing
+    
+    ' Display a message after completion
+    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+    End Sub
