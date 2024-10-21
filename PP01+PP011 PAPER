@@ -1,40 +1,3 @@
-Sub RunMultipleMacros()
-    ' Call the first macro
-    Call CountMatchingValues 'Count Branum in BRANO_DETAIL : BRANO > 0
-    Call FillPDFWithMultipleSheet_PP01 'MAIN PROCESS AND INSERT PDF
-    
-    ' Add other macros as needed
-    ' Call FourthMacro
-End Sub
-Sub CountMatchingValues()
-    Dim wsNID As Worksheet
-    Dim wsBRANO As Worksheet
-    Dim lastRowNID As Long
-    Dim lastRowBRANO As Long
-    Dim NID As Variant
-    Dim countBRANO As Long
-    Dim i As Long, j As Long
-
-    Set wsNID = ThisWorkbook.Sheets("NID_DETAIL")
-    Set wsBRANO = ThisWorkbook.Sheets("BRANO_DETAIL")
-    
-    lastRowNID = wsNID.Cells(wsNID.Rows.Count, "A").End(xlUp).Row
-    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.Count, "A").End(xlUp).Row
-    
-    For i = 2 To lastRowNID
-        NID = wsNID.Cells(i, "A").Value
-        countBRANO = 0
-        
-        For j = 2 To lastRowBRANO
-            If wsBRANO.Cells(j, "A").Value = NID And wsBRANO.Cells(j, "B").Value > 0 Then
-                countBRANO = countBRANO + 1
-            End If
-        Next j
-        
-        wsNID.Cells(i, "AK").Value = countBRANO
-    Next i
-End Sub
-
 Sub FillPDFWithMultipleSheet_PP01()
     ' Declare variables for Acrobat objects
     Dim AcroApp As Object
@@ -62,8 +25,10 @@ Sub FillPDFWithMultipleSheet_PP01()
     Dim NATION As String
     Dim ENGNAM As String
     Dim REGISDAT As String
+    Dim OFFCOD As String
     Dim SUPOFFCOD As String
     Dim HEADER As String
+    Dim OFFNAM As String
     Dim SUPOFFNAM As String
     Dim ORGANIZE As String
     Dim TITNAM As String
@@ -173,10 +138,15 @@ Sub FillPDFWithMultipleSheet_PP01()
     Dim pdfCount As Integer
     pdfCount = 0
     
-    'PDF FILENAM + HEADER
-    Dim lastHeader As String
-    Dim nextHeader As String
-    NUMBER = "0001"
+    Dim SUPOFFNUMBER As Long
+    Dim OFFNUMBER As Long
+    Dim PrevSUPOFFCOD As String
+    Dim PrevOFFCOD As String
+    
+    SUPOFFNUMBER = 0
+    OFFNUMBER = 0
+    PrevSUPOFFCOD = ""
+    PrevOFFCOD = ""
     
     startTime = Timer
     
@@ -188,10 +158,10 @@ Sub FillPDFWithMultipleSheet_PP01()
 
     
     ' Get the last row of data in each sheet
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
-    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
-    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.count, "A").End(xlUp).Row
 
     
     ' Initialize the Acrobat application
@@ -199,6 +169,8 @@ Sub FillPDFWithMultipleSheet_PP01()
 
     ' Loop through all records in Sheet1
     For i = 2 To lastRow1
+    ' Error handling - continue on error
+        On Error Resume Next
         ' Retrieve data from Sheet1 (NID DETAIL)
         NID = ws1.Cells(i, "A").Value
         NATION = ws1.Cells(i, "B").Value
@@ -206,8 +178,8 @@ Sub FillPDFWithMultipleSheet_PP01()
         LTOFLG = ws1.Cells(i, "G").Value
         ENGNAM = ws1.Cells(i, "H").Value
         REGISDAT = ws1.Cells(i, "AJ").Value
+        OFFCOD = ws1.Cells(i, "J").Value
         SUPOFFCOD = ws1.Cells(i, "K").Value
-        nextHeader = ws1.Cells(i + 1, "K").Value ' Header
         SUPOFFNAM = ws1.Cells(i, "L").Value
         ORGANIZE = ws1.Cells(i, "M").Value
         BRANAM = ws1.Cells(i, "N").Value & " " & ws1.Cells(i, "O").Value
@@ -229,10 +201,11 @@ Sub FillPDFWithMultipleSheet_PP01()
         WEBSITE = ws1.Cells(i, "AH").Value
         BUSLOCTYP = ws1.Cells(i, "AI").Value
         BRANUM = ws1.Cells(i, "AK").Value
+        OFFNAM = ws1.Cells(i, "AL").Value
 
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         ' Path to the template PDF file
-        PDFPath = ThisWorkbook.Path & "\PP01 PAPER.pdf"
+        PDFPath = ThisWorkbook.Path & "\PP01_PAPER.pdf"
         Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
         
         ' Open the PDF template
@@ -243,42 +216,59 @@ Sub FillPDFWithMultipleSheet_PP01()
             ' Check if the form object was retrieved successfully
             If Not AcroForm Is Nothing Then
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-' Fill PDF fields with data from Sheet1
-                If LTOFLG = 1 Then
-                    If Not AcroForm.getField("LTO_CHK") Is Nothing Then
-                        AcroForm.getField("LTO_CHK").Value = "Yes" ' Tick the checkbox for LTO
-                        AcroForm.getField("PP011_LTOCHK").Value = "Yes"
+            ' Fill PDF fields with data from Sheet1
+              If LTOFLG = 1 Then
+                    AcroForm.getField("LTO_CHK").Value = "Yes"
+                End If
+            
+               ' Check the first two digits of SUPOFFCOD
+                If Left(SUPOFFCOD, 2) < "04" Then
+                    ' Case for SUPOFFCOD
+                    AcroForm.getField("SUPOFF_CHK").Value = "Yes"
+                    AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+            
+                    ' Check if SUPOFFCOD has changed from the previous iteration
+                    If SUPOFFCOD <> PrevSUPOFFCOD Then
+                        ' Reset SUPOFFNUMBER if the code has changed
+                        SUPOFFNUMBER = 0
                     End If
+            
+                    ' Increment SUPOFFNUMBER and format it
+                    SUPOFFNUMBER = SUPOFFNUMBER + 1
+                    NUMBER = Format(SUPOFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP01+PP011-P-" & NUMBER
+            
+                    ' Store the current SUPOFFCOD as the previous one for the next iteration
+                    PrevSUPOFFCOD = SUPOFFCOD
+            
                 Else
-                    If Not AcroForm.getField("SUPOFF_CHK") Is Nothing Then
-                        AcroForm.getField("SUPOFF_CHK").Value = "Yes" ' Tick the checkbox for SUP
-                        AcroForm.getField("PP011_SUPCHK").Value = "Yes"
-                        
-                    If Not AcroForm.getField("OFFNAM") Is Nothing Then
-                            AcroForm.getField("OFFNAM").Value = SUPOFFNAM
-                            AcroForm.getField("PP011_SUPNAM").Value = SUPOFFNAM ' Fill the SUPOFFNAM field
-                        End If
-                        
-                   ' Create Filename PDF
-                   
-                    If HEADER = Left(nextHeader, 5) Then
-                        NUMBER = Format(CLng(NUMBER) + 1, "0000")
-                    Else
-                        NUMBER = "0001"
+                    ' Case for OFFCOD
+                    AcroForm.getField("OFF_CHK").Value = "Yes"
+                    AcroForm.getField("OFFNAM").Value = OFFNAM
+            
+                    ' Check if OFFCOD has changed from the previous iteration
+                    If OFFCOD <> PrevOFFCOD Then
+                        ' Reset OFFNUMBER if the code has changed
+                        OFFNUMBER = 0
                     End If
-                    
-                   If Len(SUPOFFCOD) >= 5 Then
-                        HEADER = Left(SUPOFFCOD, 5)
-                        AcroForm.getField("HEADER").Value = HEADER & "-PP011+PP01-P-" & NUMBER
-                    End If
-                             
-                    End If
+            
+                    ' Increment OFFNUMBER and format it
+                    OFFNUMBER = OFFNUMBER + 1
+                    NUMBER2 = Format(OFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = OFFCOD & "-PP01+PP011-P-" & NUMBER2
+            
+                    ' Store the current OFFCOD as the previous one for the next iteration
+                    PrevOFFCOD = OFFCOD
                 End If
                 
                             
                 ' Fill PDF fields for NID AND DETAIL
-                AcroForm.getField("NID").Value = NID
-                AcroForm.getField("PP011_NID").Value = NID
+                AcroForm.getField("NID").Value = CStr(NID)
+                AcroForm.getField("PP011_NID").Value = CStr(NID)
                 AcroForm.getField("PERNAM").Value = FIRNAM
                 AcroForm.getField("PP011_FIRNAM").Value = FIRNAM
                     
@@ -606,82 +596,439 @@ Sub FillPDFWithMultipleSheet_PP01()
                         End If
                     Next l
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  ' Save the filled PDF
+ ' Save the filled PDF
         Dim FileNumber As Integer
         Dim FileName As String
         Dim folderPath As String
         
-        ' Create folder path based on supoffcod
-        folderPath = ThisWorkbook.Path & "\" & HEADER & "\"
+    ' Check the first two digits of SUPOFFCOD
+    If Left(SUPOFFCOD, 2) < "04" Then
+        ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & SUPOFFCOD & "\"
+        FileName = folderPath & SUPOFFCOD & "-PP01+PP011-P-"
+    Else
+        ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & OFFCOD & "\"
+        FileName = folderPath & OFFCOD & "-PP01+PP011-P-"
+    End If
+
+    ' Check if the folder exists, if not, create it
+    If Dir(folderPath, vbDirectory) = "" Then
+        MkDir folderPath
+    End If
+
+    ' Check for existing files and generate a unique name
+    FileNumber = 1
+    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+        FileNumber = FileNumber + 1
+    Loop
+    
+        If FileNumber > 10 Then
+            subfolderPath = folderPath & "spare\"
+            If Dir(subfolderPath, vbDirectory) = "" Then
+                MkDir subfolderPath
+            End If
+            FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
+        End If
+
+    ' Construct the final file name
+    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+
+    ' Save the PDF file
+    Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF & " > COUNT : " & pdfCount
+    AcroPDDoc.Save 1, OutputPDF
+    AcroAVDoc.Close False
+
+    ' Count the number of PDFs generated
+    pdfCount = pdfCount + 1
+    
+        ' Release Acrobat objects to free memory
+        Set AcroForm = Nothing
+        Set AcroPDDoc = Nothing
+        If Not AcroAVDoc Is Nothing Then
+            AcroAVDoc.Close False
+        End If
+        Set AcroAVDoc = Nothing
+
+End If
+End If
+NextIteration:
+        ' If there's an error during PDF writing, it will continue to the next iteration
+        On Error GoTo 0 ' Reset error handling after critical code
+Next i
+
+    ' Cleanup Acrobat application
+    If Not AcroApp Is Nothing Then
+        AcroApp.Exit
+    End If
+    Set AcroApp = Nothing
+
+' Display a message after completion
+MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+End Sub
+
+    Sub FillPDFWithMultipleSheet_PP011()
+        ' Declare variables for Acrobat objects
+        Dim AcroApp As Object
+        Dim AcroAVDoc As Object
+        Dim AcroPDDoc As Object
+        Dim AcroForm As Object
         
+        ' Declare worksheets for different sheets in the workbook
+        Dim ws1 As Worksheet
+        Dim ws2 As Worksheet
+        Dim ws3 As Worksheet
+        Dim ws4 As Worksheet
+    
+        ' Declare variables for the last row in each worksheet
+        Dim lastRow1 As Long
+        Dim lastRow2 As Long
+        Dim lastRow3 As Long
+        Dim lastRow4 As Long
+    
+        Dim i As Long, j As Long, k As Long, l As Long
+    
+        ' Variables for data from Sheet1 (NID DETAIL)
+        Dim NID As String
+        Dim FIRNAM As String
+        Dim NATION As String
+        Dim ENGNAM As String
+        Dim REGISDAT As String
+        Dim OFFCOD As String
+        Dim SUPOFFCOD As String
+        Dim HEADER As String
+        Dim OFFNAM As String
+        Dim SUPOFFNAM As String
+        Dim ORGANIZE As String
+        Dim TITNAM As String
+        Dim BRANAM As String
+        Dim BLDGNAM As String
+        Dim ROOMNO As String
+        Dim FLOORNO As String
+        Dim VILLAGE As String
+        Dim ADDNO As String
+        Dim MOONO As String
+        Dim SOINAM As String
+        Dim YAEK As String
+        Dim THNNAM As String
+        Dim TAM_NAME As String
+        Dim AMP_NAME As String
+        Dim PROV_NAME As String
+        Dim POSCOD As String
+        Dim TELNO As String
+        Dim EMAIL As String
+        Dim WEBSITE As String
+        Dim BRANUM As String
+        Dim NUMBER As String
+    
+        ' Variables for data from Sheet2 (REGIS_DATAIL)
+        Dim BRANO As String
+        Dim BRA_BRANAM As String
+        Dim BRA_BLDGNAM As String
+        Dim BRA_ROOMNO As String
+        Dim BRA_FLOORNO As String
+        Dim BRA_VILLAGE As String
+        Dim BRA_ADDNO As String
+        Dim BRA_MOONO As String
+        Dim BRA_SOINAM As String
+        Dim BRA_YAEK As String
+        Dim BRA_THNNAM As String
+        Dim BRA_TAM_NAME As String
+        Dim BRA_AMP_NAME As String
+        Dim BRA_PROV_NAME As String
+        Dim BRA_POSCOD As String
+        Dim BRA_TELNO As String
+        Dim BRA_EMAIL As String
+        Dim BRA_WEBSITE As String
+        Dim BRA_BUSLOCTYP As String
+        
+        ' Variables for data from Sheet3 (BRANO_DETAIL)
+        Dim FIRDATTYP(1 To 3) As String
+        Dim DATTYP1_D As String
+        Dim DATTYP1_M As String
+        Dim DATTYP1_Y As String
+        Dim DATTYP3_D As String
+        Dim DATTYP3_M As String
+        Dim DATTYP3_Y As String
+        Dim BUSCPTAMO As String
+        Dim ESTMONINCAMO As String
+        
+        ' Variables for data from Sheet4 (ISIC_DETAIL)
+        Dim ISICTYP1 As String
+        Dim ISICTYP2 As String
+        Dim ISICTYP3 As String
+        Dim ISICTYP4 As String
+        Dim ISICTYP5 As String
+        Dim ISICTYP6 As String
+        Dim ISICTYP7 As String
+        Dim ISICTYP8 As String
+        Dim ISICTYP9 As String
+        Dim ISICTYP10 As String
+        
+        Dim ISICNAM1 As String
+        Dim ISICNAM2 As String
+        Dim ISICNAM3 As String
+        Dim ISICNAM4 As String
+        Dim ISICNAM5 As String
+        Dim ISICNAM6 As String
+        Dim ISICNAM7 As String
+        Dim ISICNAM8 As String
+        Dim ISICNAM9 As String
+        Dim ISICNAM10 As String
+        
+        Dim ISICCOD1 As String
+        Dim ISICCOD2 As String
+        Dim ISICCOD3 As String
+        Dim ISICCOD4 As String
+        Dim ISICCOD5 As String
+        Dim ISICCOD6 As String
+        Dim ISICCOD7 As String
+        Dim ISICCOD8 As String
+        Dim ISICCOD9 As String
+        Dim ISICCOD10 As String
+        
+        Dim startTime As Single
+        Dim endTime As Single
+        Dim elapsedTime As Single
+        Dim elapsedHours As Long
+        Dim elapsedMinutes As Long
+        Dim elapsedSeconds As Single
+        
+        ' Variables for the PDF file paths
+        Dim PDFPath As String
+        Dim OutputPDF As String
+        
+        
+        ' Store current date and time
+        Dim currentDateTime As String
+        currentDateTime = Format(Now, "yyyy-mm-dd hh:mm:ss")
+        
+        ' Initialize a counter for the number of PDFs created
+        Dim pdfCount As Integer
+        pdfCount = 0
+        
+        Dim SUPOFFNUMBER As Long
+        Dim OFFNUMBER As Long
+        Dim PrevSUPOFFCOD As String
+        Dim PrevOFFCOD As String
+        
+        SUPOFFNUMBER = 0
+        OFFNUMBER = 0
+        PrevSUPOFFCOD = ""
+        PrevOFFCOD = ""
+        
+        startTime = Timer
+        
+        ' Set the worksheets to the respective sheet names
+        Set ws1 = ThisWorkbook.Sheets("NID_DETAIL")
+        Set ws2 = ThisWorkbook.Sheets("BRANO_DETAIL")
+        Set ws3 = ThisWorkbook.Sheets("REGIS_DETAIL")
+        Set ws4 = ThisWorkbook.Sheets("ISIC_DETAIL")
+    
+        
+        ' Get the last row of data in each sheet
+        lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+        lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
+        lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
+        lastRow4 = ws4.Cells(ws4.Rows.count, "A").End(xlUp).Row
+    
+        
+        ' Initialize the Acrobat application
+        Set AcroApp = CreateObject("AcroExch.App")
+    
+        ' Loop through all records in Sheet1
+        For i = 2 To lastRow1
+        ' Error handling - continue on error
+            On Error Resume Next
+            ' Retrieve data from Sheet1 (NID DETAIL)
+            NID = ws1.Cells(i, "A").Value
+            NATION = ws1.Cells(i, "B").Value
+            FIRNAM = ws1.Cells(i, "C").Value & " " & ws1.Cells(i, "D").Value & " " & ws1.Cells(i, "E").Value & " " & ws1.Cells(i, "F").Value
+            LTOFLG = ws1.Cells(i, "G").Value
+            ENGNAM = ws1.Cells(i, "H").Value
+            REGISDAT = ws1.Cells(i, "AJ").Value
+            OFFCOD = ws1.Cells(i, "J").Value
+            SUPOFFCOD = ws1.Cells(i, "K").Value
+            SUPOFFNAM = ws1.Cells(i, "L").Value
+            ORGANIZE = ws1.Cells(i, "M").Value
+            BRANAM = ws1.Cells(i, "N").Value & " " & ws1.Cells(i, "O").Value
+            BLDGNAM = ws1.Cells(i, "P").Value
+            ROOMNO = ws1.Cells(i, "Q").Value
+            FLOORNO = ws1.Cells(i, "R").Value
+            VILLAGE = ws1.Cells(i, "S").Value
+            ADDNO = ws1.Cells(i, "T").Value
+            MOONO = ws1.Cells(i, "U").Value
+            SOINAM = ws1.Cells(i, "V").Value
+            YAEK = ws1.Cells(i, "W").Value
+            THNNAM = ws1.Cells(i, "X").Value
+            TAM_NAME = ws1.Cells(i, "Z").Value
+            AMP_NAME = ws1.Cells(i, "AB").Value
+            PROV_NAME = ws1.Cells(i, "AD").Value
+            POSCOD = ws1.Cells(i, "AE").Value
+            TELNO = ws1.Cells(i, "AF").Value
+            EMAIL = ws1.Cells(i, "AG").Value
+            WEBSITE = ws1.Cells(i, "AH").Value
+            BUSLOCTYP = ws1.Cells(i, "AI").Value
+            BRANUM = ws1.Cells(i, "AK").Value
+            OFFNAM = ws1.Cells(i, "AL").Value
+    
+    '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            ' Path to the template PDF file
+            PDFPath = ThisWorkbook.Path & "\PP011_PAPER.pdf"
+            Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+            
+            ' Open the PDF template
+            If AcroAVDoc.Open(PDFPath, "") Then
+                Set AcroPDDoc = AcroAVDoc.GetPDDoc
+                Set AcroForm = AcroPDDoc.GetJSObject
+                
+                ' Check if the form object was retrieved successfully
+                If Not AcroForm Is Nothing Then
+    '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                ' Fill PDF fields with data from Sheet1
+                  If LTOFLG = 1 Then
+                        AcroForm.getField("LTO_CHK").Value = "Yes"
+                    End If
+                
+                   ' Check the first two digits of SUPOFFCOD
+                    If Left(SUPOFFCOD, 2) < "04" Then
+                        ' Case for SUPOFFCOD
+                        AcroForm.getField("SUPOFF_CHK").Value = "Yes"
+                        AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+                
+                        ' Check if SUPOFFCOD has changed from the previous iteration
+                        If SUPOFFCOD <> PrevSUPOFFCOD Then
+                            ' Reset SUPOFFNUMBER if the code has changed
+                            SUPOFFNUMBER = 0
+                        End If
+                
+                        ' Increment SUPOFFNUMBER and format it
+                        SUPOFFNUMBER = SUPOFFNUMBER + 1
+                        NUMBER = Format(SUPOFFNUMBER, "0000")
+                
+                        ' Assign to header field
+                        AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP01+PP011-P-" & NUMBER
+                
+                        ' Store the current SUPOFFCOD as the previous one for the next iteration
+                        PrevSUPOFFCOD = SUPOFFCOD
+                
+                    Else
+                        ' Case for OFFCOD
+                        AcroForm.getField("OFF_CHK").Value = "Yes"
+                        AcroForm.getField("OFFNAM").Value = OFFNAM
+                
+                        ' Check if OFFCOD has changed from the previous iteration
+                        If OFFCOD <> PrevOFFCOD Then
+                            ' Reset OFFNUMBER if the code has changed
+                            OFFNUMBER = 0
+                        End If
+                
+                        ' Increment OFFNUMBER and format it
+                        OFFNUMBER = OFFNUMBER + 1
+                        NUMBER2 = Format(OFFNUMBER, "0000")
+                
+                        ' Assign to header field
+                        AcroForm.getField("HEADER").Value = OFFCOD & "-PP01+PP011-P-" & NUMBER2
+                
+                        ' Store the current OFFCOD as the previous one for the next iteration
+                        PrevOFFCOD = OFFCOD
+                    End If
+                    
+                                
+                    ' Fill PDF fields for NID AND DETAIL
+                    AcroForm.getField("PP011_NID").Value = CStr(NID)
+                    AcroForm.getField("PP011_FIRNAM").Value = FIRNAM
+                        
+                    ' Fill additional address fields if they exist
+                    With AcroForm
+                        If BLDGNAM <> "" Then .getField("PP011_BLDGNAM").Value = BLDGNAM
+                        If ROOMNO <> "" Then .getField("PP011_ROOMNO").Value = ROOMNO
+                        If FLOORNO <> "" Then .getField("PP011_FLOORNO").Value = FLOORNO
+                        If VILLAGE <> "" Then .getField("PP011_VILLAGE").Value = VILLAGE
+                        If ADDNO <> "" Then .getField("PP011_ADDNO").Value = ADDNO
+                        If MOONO <> "" Then .getField("PP011_MOONO").Value = MOONO
+                        If SOINAM <> "" Then .getField("PP011_SOINAM").Value = SOINAM
+                        If YAEK <> "" Then .getField("PP011_YAEK").Value = YAEK
+                        If THNNAM <> "" Then .getField("PP011_THNNAM").Value = THNNAM
+                        If TAM_NAME <> "" Then .getField("PP011_TAMNAME").Value = TAM_NAME
+                        If AMP_NAME <> "" Then .getField("PP011_AMPNAME").Value = AMP_NAME
+                        If PROV_NAME <> "" Then .getField("PP011_PROVNAME").Value = PROV_NAME
+                        If POSCOD <> "" Then .getField("PP011_POSCOD").Value = POSCOD
+                        If TELNO <> "" Then .getField("PP011_TELNO").Value = TELNO
+                        
+                    End With
+    '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+     ' Save the filled PDF
+            Dim FileNumber As Integer
+            Dim FileName As String
+            Dim folderPath As String
+            
+        ' Check the first two digits of SUPOFFCOD
+        If Left(SUPOFFCOD, 2) < "04" Then
+            ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
+            folderPath = ThisWorkbook.Path & "\" & SUPOFFCOD & "\"
+            FileName = folderPath & SUPOFFCOD & "-PP01+PP011-P-"
+        Else
+            ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
+            folderPath = ThisWorkbook.Path & "\" & OFFCOD & "\"
+            FileName = folderPath & OFFCOD & "-PP01+PP011-P-"
+        End If
+    
         ' Check if the folder exists, if not, create it
         If Dir(folderPath, vbDirectory) = "" Then
             MkDir folderPath
         End If
-        
-        ' Initialize the output file name without the number
-        FileName = folderPath & HEADER & "-PP01+PP011-P-"
-        
+    
         ' Check for existing files and generate a unique name
         FileNumber = 1
         Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
             FileNumber = FileNumber + 1
         Loop
         
-        ' Construct the final output file name
+            If FileNumber > 10 Then
+                subfolderPath = folderPath & "spare\"
+                If Dir(subfolderPath, vbDirectory) = "" Then
+                    MkDir subfolderPath
+                End If
+                FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
+            End If
+    
+        ' Construct the final file name
         OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
-        
-        ' Save the filled PDF
-        Debug.Print "PDF will be saved at: " & OutputPDF & " " & NID
+    
+        ' Save the PDF file
+        Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF & " > COUNT : " & pdfCount
         AcroPDDoc.Save 1, OutputPDF
         AcroAVDoc.Close False
-        
-        ' Increment PDF count
-        pdfCount = pdfCount + 1
-        End If
-        End If
-NextIteration:
-    Next i
-
-    ' Display message after completion
-    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
-End Sub
     
-Sub GenerateHouseNumberBRANO_DETAIL()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim houseNumber As String
-    Dim frontNumber As Integer
-    Dim backNumber As Integer
-    Dim i As Long
-
-    ' Set the worksheet to BRANO_DETAIL
-    Set ws = ThisWorkbook.Sheets("BRANO_DETAIL")
-
-    ' Find the last row in column I
-    lastRow = ws.Cells(ws.Rows.Count, "I").End(xlUp).Row
-
-    ' Debug log - starting the process
-    Debug.Print "Starting to generate house numbers for BRANO_DETAIL"
-
-    ' Loop through each cell in column I starting from row 2
-    For i = 2 To lastRow
-        ' Generate random front and back numbers
-        frontNumber = Application.WorksheetFunction.RandBetween(100, 999) ' Random number between 100 and 999
-        backNumber = Application.WorksheetFunction.RandBetween(100, 999) ' Random number between 100 and 999
-
-        ' Combine the numbers into the house number format
-        houseNumber = frontNumber & "/" & backNumber
-
-        ' Assign the generated house number to column I
-        ws.Cells(i, "I").Value = houseNumber
-
-        ' Debug log - show generated house number
-        Debug.Print "Row " & i & ": Generated house number " & houseNumber
+        ' Count the number of PDFs generated
+        pdfCount = pdfCount + 1
+        
+            ' Release Acrobat objects to free memory
+            Set AcroForm = Nothing
+            Set AcroPDDoc = Nothing
+            If Not AcroAVDoc Is Nothing Then
+                AcroAVDoc.Close False
+            End If
+            Set AcroAVDoc = Nothing
+    
+    End If
+    End If
+    NextIteration:
+            ' If there's an error during PDF writing, it will continue to the next iteration
+            On Error GoTo 0 ' Reset error handling after critical code
     Next i
-
-    ' Debug log - finished the process
-    Debug.Print "Finished generating house numbers for BRANO_DETAIL"
-
-    MsgBox "House numbers generated successfully for BRANO_DETAIL!", vbInformation
-End Sub
+    
+        ' Cleanup Acrobat application
+        If Not AcroApp Is Nothing Then
+            AcroApp.Exit
+        End If
+        Set AcroApp = Nothing
+    
+    ' Display a message after completion
+    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+    End Sub
+    
+     

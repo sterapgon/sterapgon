@@ -162,10 +162,10 @@ Sub FillPDFWithMultipleSheet_PP01()
 
     
     ' Get the last row of data in each sheet
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
-    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
-    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.count, "A").End(xlUp).Row
     
     ' Initialize the Acrobat application
     Set AcroApp = CreateObject("AcroExch.App")
@@ -586,6 +586,7 @@ Sub FillPDFWithMultipleSheet_PP01()
         Dim FileNumber As Integer
         Dim FileName As String
         Dim folderPath As String
+        Dim subfolderPath As String
         
     ' Check the first two digits of SUPOFFCOD
     If Left(SUPOFFCOD, 2) < "04" Then
@@ -608,7 +609,15 @@ Sub FillPDFWithMultipleSheet_PP01()
     Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
         FileNumber = FileNumber + 1
     Loop
-
+    
+          If FileNumber > 10 Then
+            subfolderPath = folderPath & "spare\"
+            If Dir(subfolderPath, vbDirectory) = "" Then
+                MkDir subfolderPath
+            End If
+            FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
+        End If
+    
     ' Construct the final file name
     OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
 
@@ -624,7 +633,7 @@ Sub FillPDFWithMultipleSheet_PP01()
         Set AcroForm = Nothing
         Set AcroPDDoc = Nothing
         If Not AcroAVDoc Is Nothing Then
-            AcroAVDoc.C lose False
+            AcroAVDoc.Close False
         End If
         Set AcroAVDoc = Nothing
 
@@ -634,7 +643,11 @@ Sub FillPDFWithMultipleSheet_PP01()
 NextIteration:
     Next i
     
-
+    ' Cleanup Acrobat application
+    If Not AcroApp Is Nothing Then
+        AcroApp.Exit
+    End If
+    Set AcroApp = Nothing
     
     ' Display a message after completion
     MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation

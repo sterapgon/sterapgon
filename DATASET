@@ -506,41 +506,6 @@ Sub DeleteAllSheetsExceptNID()
     Application.DisplayAlerts = True
 End Sub
 
-    'ลบข้อมูลทุกชีต ยกเว้นชีตที่ตั้งไว้ และ reset format ของชีตนั้นๆ ด้วย
-    Sub DeleteRowsAndClearFormatInAllSheetsExceptDataNID()
-        Dim ws As Worksheet
-        Dim lastRow As Long
-        Dim lastCol As Long
-        Dim wsName As String
-        Dim i As Long
-    
-        ' Loop through each worksheet in the workbook
-        For Each ws In ThisWorkbook.Worksheets
-            wsName = ws.Name
-            
-            ' Skip the sheet named "DATA NID"
-            If wsName <> "DATA NID" Then
-                ' Find the last used row in the sheet
-                lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-                lastCol = ws.Cells(2, ws.Columns.Count).End(xlToLeft).Column
-    
-                ' Delete rows starting from row 3 to the last row
-                If lastRow >= 3 Then
-                    For i = lastRow To 3 Step -1 ' Start from the last row and work upwards
-                        ws.Rows(i).Delete
-                    Next i
-                End If
-    
-                ' Clear any remaining formatting for the entire sheet
-                ws.Cells.ClearFormats
-    
-                ' Set the format of the remaining cells to Text (including headers)
-                ws.Cells.NumberFormat = "@"
-            End If
-        Next ws
-    
-        MsgBox "Rows deleted, formats cleared, and text format set in all sheets except DATA NID!"
-    End Sub
     
     'นับจำนวน supoffcod ที่มีค่าไม่ซ้ำกันในตราง โดยระบบจะแสดงจำนวนที่นับรวมได้ เพื่อนำไปตรวจสอบและหาต่อไปว่าอันไหนไม่ครบ
     Sub CountUniqueValuesInColumnK()

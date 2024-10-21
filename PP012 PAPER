@@ -116,10 +116,10 @@ Sub FillPDFPP012()
     Set ws3 = ThisWorkbook.Sheets("BRAN")
     Set ws4 = ThisWorkbook.Sheets("PART")
     
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
-    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
-    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.count, "A").End(xlUp).Row
 
     Set AcroApp = CreateObject("AcroExch.App")
 
@@ -133,26 +133,32 @@ Sub FillPDFPP012()
         MIDNAM = ws1.Cells(i, "E").Value
         LASNAM = ws1.Cells(i, "F").Value
         LTOFLG = ws1.Cells(i, "G").Value
-        CERTNO = ws1.Cells(i, "N").Value
-        OFFCOD = ws1.Cells(i, "J").Value
-        OFFNAM = ws1.Cells(i, "K").Value
-        SUPOFFCOD = ws1.Cells(i, "L").Value
-        SUPOFFNAM = ws1.Cells(i, "M").Value
-        BLDGNAM = ws1.Cells(i, "O").Value
-        roomNo = ws1.Cells(i, "P").Value
-        floorNo = ws1.Cells(i, "Q").Value
-        VILLAGE = ws1.Cells(i, "R").Value
-        ADDNO = ws1.Cells(i, "S").Value
-        moono = ws1.Cells(i, "T").Value
-        SOINAM = ws1.Cells(i, "U").Value
-        YAEK = ws1.Cells(i, "V").Value
-        THNNAM = ws1.Cells(i, "W").Value
-        TAMNAM = ws1.Cells(i, "Y").Value
-        AMPNAM = ws1.Cells(i, "AA").Value
-        PROVNAM = ws1.Cells(i, "AC").Value
-        POSCOD = ws1.Cells(i, "AD").Value
-        BRATITNAM = ws1.Cells(i, "AE").Value
-        BRANAM = ws1.Cells(i, "AF").Value
+        
+        CERTNO = ws1.Cells(i, "M").Value
+        
+        OFFCOD = ws1.Cells(i, "I").Value
+        OFFNAM = ws1.Cells(i, "J").Value
+        SUPOFFCOD = ws1.Cells(i, "K").Value
+        SUPOFFNAM = ws1.Cells(i, "L").Value
+        
+        BLDGNAM = ws1.Cells(i, "N").Value
+        roomNo = ws1.Cells(i, "O").Value
+        floorNo = ws1.Cells(i, "P").Value
+        VILLAGE = ws1.Cells(i, "Q").Value
+        ADDNO = ws1.Cells(i, "R").Value
+        moono = ws1.Cells(i, "S").Value
+        SOINAM = ws1.Cells(i, "T").Value
+        YAEK = ws1.Cells(i, "U").Value
+        THNNAM = ws1.Cells(i, "V").Value
+        
+        TAMNAM = ws1.Cells(i, "X").Value
+        AMPNAM = ws1.Cells(i, "Z").Value
+        PROVNAM = ws1.Cells(i, "AB").Value
+        POSCOD = ws1.Cells(i, "AC").Value
+        
+        BRATITNAM = ws1.Cells(i, "AD").Value
+        BRANAM = ws1.Cells(i, "AE").Value
+        
         FRIDAT_D = ws1.Cells(i, "AG").Value
         FRIDAT_M = ws1.Cells(i, "AH").Value
         FRIDAT_Y = ws1.Cells(i, "AI").Value
@@ -508,7 +514,7 @@ Sub ImportDataFromPP01()
     Debug.Print "Working on sheet: " & ws1.Name
     
     ' Find the last row with data in the source sheet
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
     Debug.Print "Last row in source sheet: " & lastRow1
     
     ' Loop through each row in the source sheet starting from row 2
@@ -516,7 +522,7 @@ Sub ImportDataFromPP01()
         ' Log the current row being processed
         Debug.Print "Processing row: " & i
         
-        ' คัดลอกค่าแต่ละเซลล์จาก ws1 ไปยัง wsCurrent
+        ' ¤Ñ´ÅÍ¡¤èÒáµèÅÐà«ÅÅì¨Ò¡ ws1 ä»ÂÑ§ wsCurrent
         wsCurrent.Cells(i, "A").Value = "'" & ws1.Cells(i, "A").Value  ' NID with leading '
         wsCurrent.Cells(i, "C").Value = ws1.Cells(i, "C").Value  ' TITNAM
         wsCurrent.Cells(i, "D").Value = ws1.Cells(i, "D").Value  ' FIRNAM
@@ -574,7 +580,7 @@ Sub GenerateRandomNumbersInN()
     Set ws = ThisWorkbook.Sheets("MAIN") ' Change to your actual sheet name
 
     ' Find the last row in column L
-    lastRow = ws.Cells(ws.Rows.Count, "L").End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, "L").End(xlUp).Row
 
     ' Get the current Thai year
     currentYear = Year(Date) + 543 ' Convert to Thai year
@@ -620,8 +626,8 @@ Sub RANDOM_BRAN()
     Set wsAddress = ThisWorkbook.Sheets("DBADDRESS")
 
     ' Find the last row with data in NID_DETAIL and DBADDRESS
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRowAddress = wsAddress.Cells(wsAddress.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRowAddress = wsAddress.Cells(wsAddress.Rows.count, "A").End(xlUp).Row
 
     Debug.Print "Last row in NID_DETAIL: " & lastRow1
     Debug.Print "Last row in DBADDRESS: " & lastRowAddress
@@ -666,7 +672,7 @@ Sub RANDOM_BRAN()
             Debug.Print "Address selected - BLDGNAM: " & BLDGNAM & ", ROOMNO: " & roomNo & ", TAMNAM: " & TAMNAM
 
             ' Insert the new random branch data into BRANO_DETAIL
-            lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row + 1
+            lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row + 1
             ws2.Cells(lastRow2, "A").Value = NID
             ws2.Cells(lastRow2, "B").Value = NewBRANO
             ws2.Cells(lastRow2, "C").Value = BRATITNAM ' Insert BRATITNAM into column C
@@ -706,8 +712,8 @@ Sub CountMatchingValues()
     Set wsNID = ThisWorkbook.Sheets("MAIN")
     Set wsBRANO = ThisWorkbook.Sheets("BRAN")
     
-    lastRowNID = wsNID.Cells(wsNID.Rows.Count, "A").End(xlUp).Row
-    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.Count, "A").End(xlUp).Row
+    lastRowNID = wsNID.Cells(wsNID.Rows.count, "A").End(xlUp).Row
+    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.count, "A").End(xlUp).Row
     
     ' Debug log - starting the process
     Debug.Print "Starting to count matching values between MAIN and BRAN sheets"
@@ -753,8 +759,8 @@ Sub AssignRandomAddressData()
     Set wsAddress = ThisWorkbook.Sheets("COUADDRESS")
 
     ' Get last rows in each sheet
-    lastRowMain = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRowAddress = wsAddress.Cells(wsAddress.Rows.Count, "A").End(xlUp).Row
+    lastRowMain = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRowAddress = wsAddress.Cells(wsAddress.Rows.count, "A").End(xlUp).Row
 
     ' Check if COUADDRESS has enough rows
     If lastRowAddress < 2 Then
@@ -800,4 +806,6 @@ Sub AssignRandomAddressData()
     ' Notify that the operation is complete
     MsgBox "Address data assigned successfully!", vbInformation
 End Sub
+
+
 

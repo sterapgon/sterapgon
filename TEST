@@ -1,0 +1,81 @@
+Sub ImportDataFromPP012()
+    ' Declare variables
+    Dim ws1 As Worksheet, wsCurrent As Worksheet
+    Dim wbSource As Workbook
+    Dim lastRow1 As Long
+    Dim i As Long
+    Dim sourcePath As String
+    Dim sourceFileName As String
+    
+    ' Define current workbook and worksheet
+    Set wsCurrent = ThisWorkbook.Sheets("MAIN")
+    
+    ' Define the path and source file name
+    sourcePath = ThisWorkbook.Path & "\"
+    sourceFileName = "(1)ALLDATAPP012.xlsm"
+    
+    ' Log the source path and file name
+    Debug.Print "Source Path: " & sourcePath
+    Debug.Print "Source File Name: " & sourceFileName
+    
+    ' Open the source workbook (ALLDATAPP01.xlsm)
+    Set wbSource = Workbooks.Open(sourcePath & sourceFileName)
+    Set ws1 = wbSource.Sheets("PP012 PAPER")
+    
+    ' Log when the source workbook is opened
+    Debug.Print "Opened workbook: " & wbSource.Name
+    Debug.Print "Working on sheet: " & ws1.Name
+    
+    ' Find the last row with data in the source sheet
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    Debug.Print "Last row in source sheet: " & lastRow1
+    
+    ' Loop through each row in the source sheet starting from row 2
+    For i = 2 To lastRow1
+        ' Log the current row being processed
+        Debug.Print "Processing row: " & i
+        
+        ' ¤Ñ´ÅÍ¡¤èÒáµèÅÐà«ÅÅì¨Ò¡ ws1 ä»ÂÑ§ wsCurrent
+        wsCurrent.Cells(i, "A").Value = "'" & ws1.Cells(i, "A").Value  ' NID with leading '
+        wsCurrent.Cells(i, "C").Value = ws1.Cells(i, "C").Value  ' TITNAM
+        wsCurrent.Cells(i, "D").Value = ws1.Cells(i, "D").Value  ' FIRNAM
+        wsCurrent.Cells(i, "E").Value = ws1.Cells(i, "E").Value  ' MIDNAM
+        wsCurrent.Cells(i, "F").Value = ws1.Cells(i, "F").Value  ' LASNAM
+        wsCurrent.Cells(i, "G").Value = ws1.Cells(i, "G").Value  ' LASNAM
+        wsCurrent.Cells(i, "H").Value = ws1.Cells(i, "H").Value  ' IMPIDAT
+        wsCurrent.Cells(i, "I").Value = ws1.Cells(i, "J").Value  ' OFFCOD
+        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "K").Value  ' OFFNAM
+        wsCurrent.Cells(i, "K").Value = ws1.Cells(i, "L").Value  ' SUPOFFCOD
+        wsCurrent.Cells(i, "L").Value = ws1.Cells(i, "M").Value  ' SUPOFFNAM
+
+        wsCurrent.Cells(i, "N").Value = ws1.Cells(i, "O").Value  ' BLDGNAM
+        wsCurrent.Cells(i, "O").Value = ws1.Cells(i, "P").Value  ' ROOMNO
+        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "Q").Value  ' FLOORNO
+        wsCurrent.Cells(i, "Q").Value = ws1.Cells(i, "R").Value  ' VILLAGE
+        wsCurrent.Cells(i, "R").Value = ws1.Cells(i, "S").Value  ' ADDNO
+        wsCurrent.Cells(i, "S").Value = ws1.Cells(i, "T").Value  ' MOONO
+        wsCurrent.Cells(i, "T").Value = ws1.Cells(i, "U").Value  ' SOINAM
+        wsCurrent.Cells(i, "U").Value = ws1.Cells(i, "V").Value  ' YAEK
+        wsCurrent.Cells(i, "V").Value = ws1.Cells(i, "W").Value  ' THNNAM
+        wsCurrent.Cells(i, "W").Value = ws1.Cells(i, "X").Value  ' TAMCOD
+        wsCurrent.Cells(i, "X").Value = ws1.Cells(i, "Y").Value ' TAMNAM
+        wsCurrent.Cells(i, "Y").Value = ws1.Cells(i, "Z").Value ' AMPCOD
+        wsCurrent.Cells(i, "Z").Value = ws1.Cells(i, "AA").Value ' AMPNAM
+        wsCurrent.Cells(i, "AA").Value = ws1.Cells(i, "AB").Value ' PROVCOD
+        wsCurrent.Cells(i, "AB").Value = ws1.Cells(i, "AC").Value ' PROVNAM
+        wsCurrent.Cells(i, "AC").Value = ws1.Cells(i, "AD").Value ' POSCOD
+
+        
+        ' Log the NID and other key data being imported for this row
+        Debug.Print "NID: " & ws1.Cells(i, "A").Value & " | TITNAM: " & ws1.Cells(i, "C").Value & _
+                    " | FIRNAM: " & ws1.Cells(i, "D").Value & " | SUPOFFNAM: " & ws1.Cells(i, "L").Value
+    Next i
+
+    ' Close the source workbook without saving
+    wbSource.Close False
+    Debug.Print "Closed workbook: " & sourceFileName
+
+    ' Inform the user that the process is complete
+    MsgBox "Data imported successfully from ALLDATAPP012", vbInformation
+
+End Sub
