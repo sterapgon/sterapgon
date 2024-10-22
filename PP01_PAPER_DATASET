@@ -13,7 +13,7 @@ Sub ImportDataFromPP01()
     
     ' Define the path and source file name
     sourcePath = ThisWorkbook.Path & "\"
-    sourceFileName = "(0)ALLDATAPP01.xlsm"
+    sourceFileName = "PP01PAPER.xlsx"
     
     ' Log the source path and file name
     Debug.Print "Source Path: " & sourcePath
@@ -28,7 +28,7 @@ Sub ImportDataFromPP01()
     Debug.Print "Working on sheet: " & ws1.Name
     
     ' Find the last row with data in the source sheet
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
     Debug.Print "Last row in source sheet: " & lastRow1
     
     ' Loop through each row in the source sheet starting from row 2
@@ -40,33 +40,86 @@ Sub ImportDataFromPP01()
         wsCurrent.Cells(i, "A").NumberFormat = "@"  ' Set format to Text
         wsCurrent.Cells(i, "A").Value = "'" & ws1.Cells(i, "A").Value  ' NID with leading '
         
+        wsCurrent.Cells(i, "C").NumberFormat = "@" ' Set format to Text
         wsCurrent.Cells(i, "C").Value = ws1.Cells(i, "C").Value  ' TITNAM
+        
+        wsCurrent.Cells(i, "D").NumberFormat = "@" ' Set format to Text
         wsCurrent.Cells(i, "D").Value = ws1.Cells(i, "D").Value  ' FIRNAM
+        
+        wsCurrent.Cells(i, "E").NumberFormat = "@" ' Set format to Text
         wsCurrent.Cells(i, "E").Value = ws1.Cells(i, "E").Value  ' MIDNAM
+        
+        wsCurrent.Cells(i, "F").NumberFormat = "@" ' Set format to Text
         wsCurrent.Cells(i, "F").Value = ws1.Cells(i, "F").Value  ' LASNAM
+        
+        wsCurrent.Cells(i, "H").NumberFormat = "@" ' Set format to Text
         wsCurrent.Cells(i, "H").Value = ws1.Cells(i, "H").Value  ' ENGNAM
-        wsCurrent.Cells(i, "I").Value = ws1.Cells(i, "I").Value  ' IMPIDAT
-        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "J").Value  ' OFFCOD
-        wsCurrent.Cells(i, "AL").Value = ws1.Cells(i, "K").Value  ' OFFNAM
-        wsCurrent.Cells(i, "K").Value = ws1.Cells(i, "L").Value  ' SUPOFFCOD
-        wsCurrent.Cells(i, "L").Value = ws1.Cells(i, "M").Value  ' SUPOFFNAM
-        wsCurrent.Cells(i, "M").Value = ws1.Cells(i, "N").Value  ' IMPORG
-        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "O").Value  ' BLDGNAM
-        wsCurrent.Cells(i, "Q").Value = ws1.Cells(i, "P").Value  ' ROOMNO
-        wsCurrent.Cells(i, "R").Value = ws1.Cells(i, "Q").Value  ' FLOORNO
-        wsCurrent.Cells(i, "S").Value = ws1.Cells(i, "R").Value  ' VILLAGE
-        wsCurrent.Cells(i, "T").Value = ws1.Cells(i, "S").Value  ' ADDNO
-        wsCurrent.Cells(i, "U").Value = ws1.Cells(i, "T").Value  ' MOONO
-        wsCurrent.Cells(i, "V").Value = ws1.Cells(i, "U").Value  ' SOINAM
-        wsCurrent.Cells(i, "W").Value = ws1.Cells(i, "V").Value  ' YAEK
-        wsCurrent.Cells(i, "X").Value = ws1.Cells(i, "W").Value  ' THNNAM
-        wsCurrent.Cells(i, "Y").Value = ws1.Cells(i, "X").Value  ' TAMCOD
-        wsCurrent.Cells(i, "Z").Value = ws1.Cells(i, "Y").Value  ' TAMNAM
-        wsCurrent.Cells(i, "AA").Value = ws1.Cells(i, "Z").Value ' AMPCOD
-        wsCurrent.Cells(i, "AB").Value = ws1.Cells(i, "AA").Value ' AMPNAM
-        wsCurrent.Cells(i, "AC").Value = ws1.Cells(i, "AB").Value ' PROVCOD
-        wsCurrent.Cells(i, "AD").Value = ws1.Cells(i, "AC").Value ' PROVNAM
-        wsCurrent.Cells(i, "AE").Value = ws1.Cells(i, "AD").Value ' PASCOD
+        
+        wsCurrent.Cells(i, "I").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "I").Value = ws1.Cells(i, "G").Value  ' IMPIDAT
+        
+        wsCurrent.Cells(i, "J").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "I").Value  ' OFFCOD
+        
+        wsCurrent.Cells(i, "AL").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AL").Value = ws1.Cells(i, "J").Value  ' OFFNAM
+        
+        wsCurrent.Cells(i, "K").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "K").Value = ws1.Cells(i, "K").Value  ' SUPOFFCOD
+        
+        wsCurrent.Cells(i, "L").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "L").Value = ws1.Cells(i, "L").Value  ' SUPOFFNAM
+        
+        wsCurrent.Cells(i, "M").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "M").Value = ws1.Cells(i, "M").Value  ' IMPORG
+        
+        wsCurrent.Cells(i, "P").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "N").Value  ' BLDGNAM
+        
+        wsCurrent.Cells(i, "Q").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "Q").Value = ws1.Cells(i, "O").Value  ' ROOMNO
+        
+        wsCurrent.Cells(i, "R").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "R").Value = ws1.Cells(i, "P").Value  ' FLOORNO
+        
+        wsCurrent.Cells(i, "S").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "S").Value = ws1.Cells(i, "Q").Value  ' VILLAGE
+        
+        wsCurrent.Cells(i, "T").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "T").Value = ws1.Cells(i, "R").Value  ' ADDNO
+        
+        wsCurrent.Cells(i, "U").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "U").Value = ws1.Cells(i, "S").Value  ' MOONO
+        
+        wsCurrent.Cells(i, "V").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "V").Value = ws1.Cells(i, "T").Value  ' SOINAM
+        
+        wsCurrent.Cells(i, "W").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "W").Value = ws1.Cells(i, "U").Value  ' YAEK
+        
+        wsCurrent.Cells(i, "X").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "X").Value = ws1.Cells(i, "V").Value  ' THNNAM
+        
+        wsCurrent.Cells(i, "Y").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "Y").Value = ws1.Cells(i, "W").Value  ' TAMCOD
+        
+        wsCurrent.Cells(i, "Z").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "Z").Value = ws1.Cells(i, "X").Value  ' TAMNAM
+        
+        wsCurrent.Cells(i, "AA").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AA").Value = ws1.Cells(i, "Y").Value ' AMPCOD
+        
+        wsCurrent.Cells(i, "AB").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AB").Value = ws1.Cells(i, "Z").Value ' AMPNAM
+        
+        wsCurrent.Cells(i, "AC").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AC").Value = ws1.Cells(i, "AA").Value ' PROVCOD
+        
+        wsCurrent.Cells(i, "AD").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AD").Value = ws1.Cells(i, "AB").Value ' PROVNAM
+        
+        wsCurrent.Cells(i, "AE").NumberFormat = "@" ' Set format to Text
+        wsCurrent.Cells(i, "AE").Value = ws1.Cells(i, "AC").Value ' PASCOD
 
         
         ' Log the NID and other key data being imported for this row
@@ -102,8 +155,8 @@ Sub RANDOM_BRAN()
     Set wsAddress = ThisWorkbook.Sheets("DBADDRESS")
 
     ' Find the last row with data in NID_DETAIL and DBADDRESS
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRowAddress = wsAddress.Cells(wsAddress.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRowAddress = wsAddress.Cells(wsAddress.Rows.count, "A").End(xlUp).Row
 
     Debug.Print "Last row in NID_DETAIL: " & lastRow1
     Debug.Print "Last row in DBADDRESS: " & lastRowAddress
@@ -149,7 +202,7 @@ Sub RANDOM_BRAN()
             Debug.Print "Address selected - BLDGNAM: " & BLDGNAM & ", ROOMNO: " & ROOMNO & ", TAMNAM: " & TAMNAM
 
             ' Insert the new random branch data into BRANO_DETAIL
-            lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row + 1
+            lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row + 1
             ws2.Cells(lastRow2, "A").Value = NID
             ws2.Cells(lastRow2, "B").Value = NewBRANO
             ws2.Cells(lastRow2, "C").Value = BRATITNAM ' Insert BRATITNAM into column C
@@ -194,8 +247,8 @@ Sub random_isic()
     Set ws3 = ThisWorkbook.Sheets("TRDBGOO")
 
     ' Find the last row for each sheet
-    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
-    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
     Debug.Print "Last row in NID_DETAIL: " & lastRow1
     Debug.Print "Last row in TRDBGOO: " & lastRow3
 
@@ -219,7 +272,7 @@ Sub random_isic()
                         ", GOOTYPCOD: " & GOOTYPCOD & ", GOOTYPTXT: " & GOOTYPTXT
             
             ' Find the next available row in ws2
-            lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row + 1
+            lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row + 1
             Debug.Print "Next available row in ISIC_DETAIL: " & lastRow2
             
             ' Write data into ws2
@@ -236,7 +289,7 @@ Sub random_isic()
     Debug.Print "Random data insertion completed!"
 
 End Sub
-Sub GenerateRandomAddress() 'FOR DB ADDRESS
+Sub GenerateRandomAddress() 'FOR DB NID_DETAIL
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim i As Long
@@ -244,39 +297,169 @@ Sub GenerateRandomAddress() 'FOR DB ADDRESS
     Dim firstPart As String
     Dim secondPart As String
     Dim MOONO As String ' Variable for MOONO
+    Dim KValue As String ' Variable for K column value
+    Dim PValue As String ' Variable for P column value
+    Dim AIValue As String ' Variable for AI column value
 
     ' Set the worksheet that you want to work with (change as needed)
-    Set ws = ThisWorkbook.Sheets("DBADDRESS")
+    Set ws = ThisWorkbook.Sheets("NID_DETAIL")
 
     ' Find the last row with data in column A
-    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
     Debug.Print "Last row with data: " & lastRow
 
     ' Loop through each row in column A (starting from row 2 if there's a header)
     For i = 2 To lastRow
-        ' Generate random numbers for address
-        firstPart = Application.WorksheetFunction.RandBetween(100, 999)
-        secondPart = Application.WorksheetFunction.RandBetween(100, 999)
+        ' Get the value from column K
+        KValue = ws.Cells(i, "K").Value
         
-        ' Generate random MOONO (between 1 and 9)
-        MOONO = Application.WorksheetFunction.RandBetween(1, 9)
+        ' If KValue has at least 3 characters, extract the first 3 characters
+        If Len(KValue) >= 3 Then
+            firstPart = Left(KValue, 3)
+        Else
+            firstPart = KValue ' If KValue is less than 3 characters, use the whole value
+        End If
         
-        ' Combine the random numbers into the address format
+        ' Remove leading zeros from firstPart if necessary
+        firstPart = Val(firstPart)
+        
+        ' Generate random numbers for the second part (between 11 and 99)
+        secondPart = Application.WorksheetFunction.RandBetween(11, 99)
+        
+        ' Combine the first part and second part into the address format
         addressNo = firstPart & "/" & secondPart
-
-        ' Place the address in column E and MOONO in column F
-        ws.Cells(i, "E").Value = addressNo
-        ws.Cells(i, "F").Value = MOONO
+        ws.Cells(i, "T").Value = addressNo
         
-        ' Debug log for each iteration
+        ' Check the value in column K to see if it starts with >= "04"
+        If Left(KValue, 2) >= "04" Then
+            ' Generate random MOONO (between 1 and 9)
+            MOONO = Application.WorksheetFunction.RandBetween(1, 9)
+            ws.Cells(i, "U").Value = MOONO
+            
+            ' Debug log for MOONO assignment
+            Debug.Print "Row: " & i & ", KValue: " & KValue & " meets condition, MOONO: " & MOONO
+        Else
+            ' If condition is not met, leave MOONO empty
+            ws.Cells(i, "U").Value = ""
+            
+            ' Debug log for skipped MOONO
+            Debug.Print "Row: " & i & ", KValue: " & KValue & " does not meet condition, MOONO skipped."
+        End If
+        
+        ' Check the value in column P
+        PValue = ws.Cells(i, "P").Value
+        
+        ' If P is empty, set P, Q, R to "-"
+        If PValue = "" Then
+            ws.Cells(i, "P").Value = "-"
+            ws.Cells(i, "Q").Value = "-"
+            ws.Cells(i, "R").Value = "-"
+            AIValue = "01" ' Set AI to 01 if P is empty
+            Debug.Print "Row: " & i & " - P is empty, set P, Q, R to '-' and AI to 01"
+        ElseIf PValue <> "-" Then
+            AIValue = "03" ' Set AI to 03 if P has any value other than "-"
+        Else
+            AIValue = "01" ' Set AI to 01 if P is "-"
+        End If
+        
+        ' Place the value in column AI
+        ws.Cells(i, "AI").Value = AIValue
+
+        ' Check if columns S, V, W are empty and set to "-"
+        If ws.Cells(i, "S").Value = "" Then ws.Cells(i, "S").Value = "-"
+        If ws.Cells(i, "V").Value = "" Then ws.Cells(i, "V").Value = "-"
+        If ws.Cells(i, "W").Value = "" Then ws.Cells(i, "W").Value = "-"
+        
+        ' Debug log for each generated address and AI assignment
         Debug.Print "Row: " & i & ", FirstPart: " & firstPart & ", SecondPart: " & secondPart & _
-                    ", Generated Address: " & addressNo & ", MOONO: " & MOONO
+                    ", Generated Address: " & addressNo & ", AI Value: " & AIValue
     Next i
 
     ' Notify that the operation is complete
-    MsgBox "Random addresses and MOONO generated in columns E and F!", vbInformation
-    Debug.Print "Random address and MOONO generation completed!"
+    MsgBox "Random addresses, MOONO generated, and AI values set in columns P, Q, R, S, V, W!", vbInformation
+    Debug.Print "Random address, MOONO, and AI value generation completed!"
 End Sub
+    
+Sub UpdateDBAddress() 'FOR DBADDRESS
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim addressNo As String
+    Dim firstPart As String
+    Dim secondPart As String
+    Dim JValue As String ' Variable for column J value
+    Dim AValue As String ' Variable for column A value
+    
+    ' Set the worksheet that you want to work with
+    Set ws = ThisWorkbook.Sheets("DBADDRESS")
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
+    Debug.Print "Last row with data: " & lastRow
+
+    ' Loop through each row in column A (starting from row 2 if there's a header)
+    For i = 2 To lastRow
+        ' Get the value from column A
+        AValue = ws.Cells(i, "A").Value
+        
+        ' Check if column A is empty
+        If AValue = "" Then
+            ' If A is empty, set A, B, C to "-"
+            ws.Cells(i, "A").Value = "-"
+            ws.Cells(i, "B").Value = "-"
+            ws.Cells(i, "C").Value = "-"
+        End If
+
+        ' Get the value from column J for house number generation
+        JValue = ws.Cells(i, "J").Value
+
+        ' If J has at least 2 characters, extract the first 2 characters
+        If Len(JValue) >= 2 Then
+            firstPart = Left(JValue, 2)
+        Else
+            firstPart = "00" ' Default value if J has less than 2 characters
+        End If
+        
+        ' Remove leading zeros from firstPart if necessary
+        firstPart = Val(firstPart)
+        
+        ' Generate random numbers for the second part (between 11 and 99)
+        secondPart = Application.WorksheetFunction.RandBetween(11, 99)
+        
+        ' Combine the first part and second part into the address format
+        addressNo = firstPart & "/" & secondPart
+        ws.Cells(i, "E").Value = addressNo
+        
+        ' Check columns A-I (excluding F) for empty cells and set to "-"
+        If ws.Cells(i, "A").Value = "" Then ws.Cells(i, "A").Value = "-"
+        If ws.Cells(i, "B").Value = "" Then ws.Cells(i, "B").Value = "-"
+        If ws.Cells(i, "C").Value = "" Then ws.Cells(i, "C").Value = "-"
+        If ws.Cells(i, "D").Value = "" Then ws.Cells(i, "D").Value = "-"
+        ' Column E is already handled with address generation
+        If ws.Cells(i, "G").Value = "" Then ws.Cells(i, "G").Value = "-"
+        If ws.Cells(i, "H").Value = "" Then ws.Cells(i, "H").Value = "-"
+        If ws.Cells(i, "I").Value = "" Then ws.Cells(i, "I").Value = "-"
+        
+        ' Check the value in column A
+        AValue = ws.Cells(i, "A").Value
+        
+        ' If column A has a value and is not "-", set Q to "03", otherwise set Q to "01"
+        If AValue <> "" And AValue <> "-" Then
+            ws.Cells(i, "Q").Value = "03"
+        Else
+            ws.Cells(i, "Q").Value = "01"
+        End If
+        
+        ' Debug log for each generated address
+        Debug.Print "Row: " & i & ", FirstPart: " & firstPart & ", SecondPart: " & secondPart & _
+                    ", Generated Address: " & addressNo & ", Q Value: " & ws.Cells(i, "Q").Value
+    Next i
+
+    ' Notify that the operation is complete
+    MsgBox "Address updates and Q values completed for sheet DBADDRESS!", vbInformation
+    Debug.Print "Address generation and Q value update completed!"
+End Sub
+
 Sub CountMatchingValues()
     Dim wsNID As Worksheet
     Dim wsBRANO As Worksheet
@@ -291,8 +474,8 @@ Sub CountMatchingValues()
     Set wsBRANO = ThisWorkbook.Sheets("BRANO_DETAIL")
     
     ' Find the last row with data in each sheet
-    lastRowNID = wsNID.Cells(wsNID.Rows.Count, "A").End(xlUp).Row
-    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.Count, "A").End(xlUp).Row
+    lastRowNID = wsNID.Cells(wsNID.Rows.count, "A").End(xlUp).Row
+    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.count, "A").End(xlUp).Row
     
     ' Loop through each NID in the NID_DETAIL sheet
     For i = 2 To lastRowNID
@@ -322,3 +505,85 @@ Sub CountMatchingValues()
     ' Notify completion of the process
     MsgBox "Count matching values completed!", vbInformation
 End Sub
+Sub CountAndLogValuesInColumnK()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim logFilePath As String
+    Dim logFile As Integer
+    Dim i As Long
+    Dim valueInK As Variant
+    Dim countDict As Object
+    Dim timestamp As String
+
+    ' Set the worksheet to be checked
+    Set ws = ThisWorkbook.Sheets("NID_DETAIL") ' Change to the name of the desired sheet
+
+    ' Find the last row with data in column K
+    lastRow = ws.Cells(ws.Rows.count, "K").End(xlUp).Row
+
+    ' Check if the log file already exists
+    timestamp = Format(Now, "yyyy-mm-dd_hh-nn-ss")
+    logFilePath = ThisWorkbook.Path & "\log_K_count_" & timestamp & ".txt"
+
+    ' Prepare the log file for writing
+    logFile = FreeFile
+    Open logFilePath For Output As logFile
+
+    ' Create a Dictionary to count occurrences of values in column K
+    On Error Resume Next
+    Set countDict = CreateObject("Scripting.Dictionary")
+    If Err.NUMBER <> 0 Then
+        MsgBox "Error creating Dictionary. Please ensure you have the 'Microsoft Scripting Runtime' reference enabled.", vbCritical
+        Close logFile
+        Exit Sub
+    End If
+    On Error GoTo 0
+
+    ' Loop through each row in column K to read values
+    For i = 1 To lastRow
+        valueInK = ws.Cells(i, "K").Value
+        
+        ' Skip empty values
+        If Trim(valueInK) <> "" Then
+            ' If the value exists in the dictionary, increment the count
+            If countDict.Exists(valueInK) Then
+                countDict(valueInK) = countDict(valueInK) + 1
+            Else
+                ' If the value does not exist, add it to the dictionary
+                countDict.Add valueInK, 1
+            End If
+            
+            ' Debug log for the value found
+            Debug.Print "Row " & i & ": Found value '" & valueInK & "' - Count: " & countDict(valueInK)
+        End If
+    Next i
+
+    ' Loop through the dictionary to log the counts
+    Dim key As Variant
+    For Each key In countDict.Keys
+        Dim count As Long
+        count = countDict(key)
+
+        ' Log the count with the appropriate symbol
+        If count > 10 Then
+            Print #logFile, "Value '" & key & "' appears " & count & " times > 10."
+            Debug.Print "Logged: Value '" & key & "' appears " & count & " times > 10."
+        ElseIf count < 10 Then
+            Print #logFile, "Value '" & key & "' appears " & count & " times < 10."
+            Debug.Print "Logged: Value '" & key & "' appears " & count & " times < 10."
+        Else
+            Print #logFile, "Value '" & key & "' appears " & count & " times = 10."
+            Debug.Print "Logged: Value '" & key & "' appears " & count & " times = 10."
+        End If
+    Next key
+
+    ' Close the log file
+    Close logFile
+
+    ' Show a message when the check is complete
+    MsgBox "Check completed. Log has been saved at: " & logFilePath, vbInformation
+    Debug.Print "Check completed. Log file saved at: " & logFilePath
+End Sub
+
+
+

@@ -236,47 +236,7 @@ Sub random_isic()
     Debug.Print "Random data insertion completed!"
 
 End Sub
-Sub GenerateRandomAddress() 'FOR DB ADDRESS
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim i As Long
-    Dim addressNo As String
-    Dim firstPart As String
-    Dim secondPart As String
-    Dim MOONO As String ' Variable for MOONO
 
-    ' Set the worksheet that you want to work with (change as needed)
-    Set ws = ThisWorkbook.Sheets("DBADDRESS")
-
-    ' Find the last row with data in column A
-    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
-    Debug.Print "Last row with data: " & lastRow
-
-    ' Loop through each row in column A (starting from row 2 if there's a header)
-    For i = 2 To lastRow
-        ' Generate random numbers for address
-        firstPart = Application.WorksheetFunction.RandBetween(100, 999)
-        secondPart = Application.WorksheetFunction.RandBetween(100, 999)
-        
-        ' Generate random MOONO (between 1 and 9)
-        MOONO = Application.WorksheetFunction.RandBetween(1, 9)
-        
-        ' Combine the random numbers into the address format
-        addressNo = firstPart & "/" & secondPart
-
-        ' Place the address in column E and MOONO in column F
-        ws.Cells(i, "E").Value = addressNo
-        ws.Cells(i, "F").Value = MOONO
-        
-        ' Debug log for each iteration
-        Debug.Print "Row: " & i & ", FirstPart: " & firstPart & ", SecondPart: " & secondPart & _
-                    ", Generated Address: " & addressNo & ", MOONO: " & MOONO
-    Next i
-
-    ' Notify that the operation is complete
-    MsgBox "Random addresses and MOONO generated in columns E and F!", vbInformation
-    Debug.Print "Random address and MOONO generation completed!"
-End Sub
 Sub CountMatchingValues()
     Dim wsNID As Worksheet
     Dim wsBRANO As Worksheet
@@ -322,8 +282,6 @@ Sub CountMatchingValues()
     ' Notify completion of the process
     MsgBox "Count matching values completed!", vbInformation
 End Sub
-
-    
 Sub ClearCellsWithLongTextAndDeleteEmptyRows()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -350,8 +308,6 @@ Sub ClearCellsWithLongTextAndDeleteEmptyRows()
 
     MsgBox "Cleared cells with long text and deleted empty rows in column C!"
 End Sub
-
-
 Sub CountAndLogValuesInColumnK()
     Dim ws As Worksheet
     Dim lastRow As Long
@@ -431,4 +387,249 @@ Sub CountAndLogValuesInColumnK()
     MsgBox "Check completed. Log has been saved at: " & logFilePath, vbInformation
     Debug.Print "Check completed. Log file saved at: " & logFilePath
 End Sub
+
+Sub UpdateDBAddress() 'FOR DBADDRESS
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim addressNo As String
+    Dim firstPart As String
+    Dim secondPart As String
+    Dim JValue As String ' Variable for column J value
+    Dim AValue As String ' Variable for column A value
+    Dim LValue As String ' Variable for column L value
+    Dim randomSingleDigit As Integer ' Variable for random number
+    
+    ' Set the worksheet that you want to work with
+    Set ws = ThisWorkbook.Sheets("DBADDRESS")
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
+    Debug.Print "Last row with data: " & lastRow
+
+    ' Loop through each row in column A (starting from row 2 if there's a header)
+    For i = 2 To lastRow
+        ' Get the value from column A
+        AValue = ws.Cells(i, "A").Value
+        
+        ' Check if column A has a value and is not "-"
+        If AValue <> "" And AValue <> "-" Then
+            ' Get the value from column J
+            JValue = ws.Cells(i, "J").Value
+            ' Ensure JValue has at least 5 characters
+            If Len(JValue) >= 5 Then
+                ' Extract the first 4 characters from J and put in B, and the last character in C
+                ws.Cells(i, "B").Value = Left(JValue, 4)
+                ws.Cells(i, "C").Value = Right(JValue, 1)
+                Debug.Print "Row: " & i & ", AValue: " & AValue & " - Values from J to B and C: " & _
+                            ws.Cells(i, "B").Value & ", " & ws.Cells(i, "C").Value
+            End If
+        Else
+            ' If A is empty or "-", set A, B, C to "-"
+            ws.Cells(i, "A").Value = "-"
+            ws.Cells(i, "B").Value = "-"
+            ws.Cells(i, "C").Value = "-"
+        End If
+
+        ' Get the value from column J for house number generation
+        JValue = ws.Cells(i, "J").Value
+
+        ' If J has at least 2 characters, extract the first 2 characters
+        If Len(JValue) >= 2 Then
+            firstPart = Left(JValue, 2)
+        Else
+            firstPart = "00" ' Default value if J has less than 2 characters
+        End If
+        
+        ' Remove leading zeros from firstPart if necessary
+        firstPart = Val(firstPart)
+        
+        ' Generate random numbers for the second part (between 11 and 99)
+        secondPart = Application.WorksheetFunction.RandBetween(11, 99)
+        
+        ' Combine the first part and second part into the address format
+        addressNo = firstPart & "/" & secondPart
+        ws.Cells(i, "E").Value = addressNo
+        
+        ' Check columns A-I (excluding F) for empty cells and set to "-"
+        If ws.Cells(i, "A").Value = "" Then ws.Cells(i, "A").Value = "-"
+        If ws.Cells(i, "B").Value = "" Then ws.Cells(i, "B").Value = "-"
+        If ws.Cells(i, "C").Value = "" Then ws.Cells(i, "C").Value = "-"
+        If ws.Cells(i, "D").Value = "" Then ws.Cells(i, "D").Value = "-"
+        ' Column E is already handled with address generation
+        If ws.Cells(i, "G").Value = "" Then ws.Cells(i, "G").Value = "-"
+        If ws.Cells(i, "H").Value = "" Then ws.Cells(i, "H").Value = "-"
+        If ws.Cells(i, "I").Value = "" Then ws.Cells(i, "I").Value = "-"
+        
+        ' Check the value in column A
+        AValue = ws.Cells(i, "A").Value
+        
+        ' If column A has a value and is not "-", set Q to "03", otherwise set Q to "01"
+        If AValue <> "" And AValue <> "-" Then
+            ws.Cells(i, "Q").Value = "03"
+        Else
+            ws.Cells(i, "Q").Value = "01"
+        End If
+        
+        ' Get the value from column L
+        LValue = ws.Cells(i, "L").Value
+        
+        ' If L has at least 2 characters and the first 2 characters are >= 11, generate random number
+        If Len(LValue) >= 2 And Val(Left(LValue, 2)) >= 11 Then
+            ' Generate random single-digit number (between 1 and 9)
+            randomSingleDigit = Application.WorksheetFunction.RandBetween(1, 9)
+            ws.Cells(i, "F").Value = randomSingleDigit
+            Debug.Print "Row: " & i & ", LValue: " & LValue & ", Random Single Digit for F: " & randomSingleDigit
+        End If
+        
+        ' Debug log for each generated address
+        Debug.Print "Row: " & i & ", FirstPart: " & firstPart & ", SecondPart: " & secondPart & _
+                    ", Generated Address: " & addressNo & ", Q Value: " & ws.Cells(i, "Q").Value
+    Next i
+
+    ' Notify that the operation is complete
+    MsgBox "Address updates and Q values completed for sheet DBADDRESS!", vbInformation
+    Debug.Print "Address generation and Q value update completed!"
+End Sub
+
+
+Sub GenerateRandomAddress() 'FOR DB NID_DETAIL
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim addressNo As String
+    Dim firstPart As String
+    Dim secondPart As String
+    Dim MOONO As String ' Variable for MOONO
+    Dim KValue As String ' Variable for K column value
+    Dim PValue As String ' Variable for P column value
+    Dim AIValue As String ' Variable for AI column value
+    Dim YValue As String ' Variable for Y column value
+
+    ' Set the worksheet that you want to work with (change as needed)
+    Set ws = ThisWorkbook.Sheets("NID_DETAIL")
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
+    Debug.Print "Last row with data: " & lastRow
+
+    ' Loop through each row in column A (starting from row 2 if there's a header)
+    For i = 2 To lastRow
+        ' Get the value from column K
+        KValue = ws.Cells(i, "K").Value
+        
+        ' If KValue has at least 3 characters, extract the first 3 characters
+        If Len(KValue) >= 3 Then
+            firstPart = Left(KValue, 3)
+        Else
+            firstPart = KValue ' If KValue is less than 3 characters, use the whole value
+        End If
+        
+        ' Remove leading zeros from firstPart if necessary
+        firstPart = Val(firstPart)
+        
+        ' Generate random numbers for the second part (between 11 and 99)
+        secondPart = Application.WorksheetFunction.RandBetween(11, 99)
+        
+        ' Combine the first part and second part into the address format
+        addressNo = firstPart & "/" & secondPart
+        ws.Cells(i, "T").Value = addressNo
+        
+        ' Check the value in column K to see if it starts with >= "04"
+        If Left(KValue, 2) >= "04" Then
+            ' Generate random MOONO (between 1 and 9)
+            MOONO = Application.WorksheetFunction.RandBetween(1, 9)
+            ws.Cells(i, "U").Value = MOONO
+            
+            ' Debug log for MOONO assignment
+            Debug.Print "Row: " & i & ", KValue: " & KValue & " meets condition, MOONO: " & MOONO
+        Else
+            ' If condition is not met, leave MOONO empty
+            ws.Cells(i, "U").Value = ""
+            
+            ' Debug log for skipped MOONO
+            Debug.Print "Row: " & i & ", KValue: " & KValue & " does not meet condition, MOONO skipped."
+        End If
+        
+        ' Check the value in column P
+        PValue = ws.Cells(i, "P").Value
+        YValue = ws.Cells(i, "Y").Value ' Get the value from column Y
+        
+        ' If P is empty, set P, Q, R to "-"
+        If PValue = "" Then
+            ws.Cells(i, "P").Value = "-"
+            ws.Cells(i, "Q").Value = "-"
+            ws.Cells(i, "R").Value = "-"
+            AIValue = "01" ' Set AI to 01 if P is empty
+            Debug.Print "Row: " & i & " - P is empty, set P, Q, R to '-' and AI to 01"
+        ElseIf PValue <> "-" Then
+            ' Extract the first 4 characters from Y for Q and last character from Y for R
+            If Len(YValue) >= 5 Then
+                ws.Cells(i, "Q").Value = Left(YValue, 4) ' First 4 characters from Y
+                ws.Cells(i, "R").Value = Right(YValue, 1) ' Last character from Y
+                Debug.Print "Row: " & i & " - P has value, extracted values from Y to Q and R"
+            End If
+            AIValue = "03" ' Set AI to 03 if P has any value other than "-"
+        Else
+            AIValue = "01" ' Set AI to 01 if P is "-"
+        End If
+        
+        ' Place the value in column AI
+        ws.Cells(i, "AI").Value = AIValue
+
+        ' Check if columns S, V, W are empty and set to "-"
+        If ws.Cells(i, "S").Value = "" Then ws.Cells(i, "S").Value = "-"
+        If ws.Cells(i, "V").Value = "" Then ws.Cells(i, "V").Value = "-"
+        If ws.Cells(i, "W").Value = "" Then ws.Cells(i, "W").Value = "-"
+        If ws.Cells(i, "X").Value = "" Then ws.Cells(i, "X").Value = "-"
+        
+        ' Debug log for each generated address and AI assignment
+        Debug.Print "Row: " & i & ", FirstPart: " & firstPart & ", SecondPart: " & secondPart & _
+                    ", Generated Address: " & addressNo & ", AI Value: " & AIValue
+    Next i
+
+    ' Notify that the operation is complete
+    MsgBox "Random addresses, MOONO generated, and AI values set in columns P, Q, R, S, V, W!", vbInformation
+    Debug.Print "Random address, MOONO, and AI value generation completed!"
+End Sub
+
+Sub TrimAndConvertToTextInDBAddress()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim lastCol As Long
+    Dim i As Long, j As Long
+    Dim cellValue As String
+    
+    ' Set the worksheet you want to work with
+    Set ws = ThisWorkbook.Sheets("DBADDRESS")
+    
+    ' Find the last row and last column with data
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
+    lastCol = ws.Cells(1, ws.Columns.count).End(xlToLeft).Column
+    
+    ' Loop through all the rows and columns in the sheet
+    For i = 1 To lastRow
+        For j = 1 To lastCol
+            ' Skip column A
+            If j <> 1 Then ' Column A is the first column, which is skipped
+                ' Get the value of the current cell
+                cellValue = ws.Cells(i, j).Value
+                
+                ' If the cell contains a text, trim it
+                If IsNumeric(cellValue) = False Then
+                    cellValue = Trim(cellValue)
+                End If
+                
+                ' Convert the cell to text format
+                ws.Cells(i, j).Value = cellValue
+                ws.Cells(i, j).NumberFormat = "@" ' Set the format to Text
+            End If
+        Next j
+    Next i
+    
+    ' Notify that the operation is complete
+    MsgBox "Trim and conversion to Text (except Column A) completed for sheet DBADDRESS!", vbInformation
+End Sub
+
+
 
