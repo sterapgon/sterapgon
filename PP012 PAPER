@@ -33,7 +33,7 @@ Sub FillPDFPP012()
         Dim floorNo As String
         Dim VILLAGE As String
         Dim ADDNO As String
-        Dim moono As String
+        Dim MOONO As String
         Dim SOINAM As String
         Dim YAEK As String
         Dim THNNAM As String
@@ -108,8 +108,15 @@ Sub FillPDFPP012()
         PrevSUPOFFCOD = ""
         PrevOFFCOD = ""
     
-    Dim pdfCount As Integer
-    pdfCount = 0 ' Initialize to 0
+    Dim pdfCount As Integer, suPDFCount As Integer, offPDFCount As Integer
+    Dim logFilePath As String, logFile As Integer
+    Dim currentSUPOFFCOD As String, currentOFFCOD As String
+    
+    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFile = FreeFile
+    Open logFilePath For Append As #logFile
+        
+    pdfCount = 0
   
     Set ws1 = ThisWorkbook.Sheets("MAIN")
     Set ws2 = ThisWorkbook.Sheets("COU")
@@ -146,7 +153,7 @@ Sub FillPDFPP012()
         floorNo = ws1.Cells(i, "P").Value
         VILLAGE = ws1.Cells(i, "Q").Value
         ADDNO = ws1.Cells(i, "R").Value
-        moono = ws1.Cells(i, "S").Value
+        MOONO = ws1.Cells(i, "S").Value
         SOINAM = ws1.Cells(i, "T").Value
         YAEK = ws1.Cells(i, "U").Value
         THNNAM = ws1.Cells(i, "V").Value
@@ -238,7 +245,7 @@ Sub FillPDFPP012()
                 .getField("FLOORNO").Value = floorNo
                 .getField("VILLAGE").Value = VILLAGE
                 .getField("ADDNO").Value = ADDNO
-                .getField("MOONO").Value = moono
+                .getField("MOONO").Value = MOONO
                 .getField("SOINAM").Value = SOINAM
                 .getField("YAEK").Value = YAEK
                 .getField("THNNAM").Value = THNNAM
@@ -437,375 +444,91 @@ Sub FillPDFPP012()
                 End If
             Next l
 
- ' Save the filled PDF
-        Dim FileNumber As Integer
-        Dim FileName As String
-        Dim folderPath As String
-        
-    ' Check the first two digits of SUPOFFCOD
-    If Left(SUPOFFCOD, 2) < "04" Then
-        ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
-        folderPath = ThisWorkbook.Path & "\" & SUPOFFCOD & "\"
-        FileName = folderPath & SUPOFFCOD & "-PP012-P-"
-    Else
-        ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
-        folderPath = ThisWorkbook.Path & "\" & OFFCOD & "\"
-        FileName = folderPath & OFFCOD & "-PP012-P-"
+   ' Save the filled PDF
+Dim FileNumber As Integer
+Dim FileName As String
+Dim folderPath As String
+Dim subfolderPath As String
+
+' Check if the current SUPOFFCOD is different from the previously used one
+If SUPOFFCOD <> currentSUPOFFCOD Then
+    ' If currentSUPOFFCOD is not empty, print the number of PDFs generated
+    If currentSUPOFFCOD <> "" Then
+        Print #logFile, "SUPOFFCOD: " & currentSUPOFFCOD & " generated " & suPDFCount & " PDFs."
     End If
+    suPDFCount = 0
+    currentSUPOFFCOD = SUPOFFCOD
+End If
 
-    ' Check if the folder exists, if not, create it
-    If Dir(folderPath, vbDirectory) = "" Then
-        MkDir folderPath
+' Check if the current OFFCOD is different from the previously used one
+If OFFCOD <> currentOFFCOD Then
+    ' If currentOFFCOD is not empty, print the number of PDFs generated
+    If currentOFFCOD <> "" Then
+        'Print #logFile, "OFFCOD: " & currentOFFCOD & " generated " & offPDFCount & " PDFs."
     End If
+    offPDFCount = 0
+    currentOFFCOD = OFFCOD
+End If
 
-    ' Check for existing files and generate a unique name
-    FileNumber = 1
-    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
-        FileNumber = FileNumber + 1
-    Loop
+' Check and set the path for saving the PDF
+If Left(SUPOFFCOD, 2) < "04" Then
+    folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+    FileName = folderPath & SUPOFFCOD & "-PP012-P-"
+Else
+    folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+    FileName = folderPath & OFFCOD & "-PP012-P-"
+End If
 
-    ' Construct the final file name
-    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+' Create the folder if it does not exist
+If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
 
-    ' Save the PDF file
+' Set a unique file number for the PDF
+FileNumber = 1
+Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+    FileNumber = FileNumber + 1
+Loop
+
+' If the number of files exceeds 10, create a backup folder and rename the file
+If FileNumber > 10 Then
+    folderPath = folderPath & "spare\"
+    If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+    FileName = folderPath & SUPOFFCOD & "-" & NID & "-"
+End If
+OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+
+' Save the PDF
     Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
     AcroPDDoc.Save 1, OutputPDF
     AcroAVDoc.Close False
+    AcroApp.Exit
 
-    ' Count the number of PDFs generated
+    ' Increase the PDF count
     pdfCount = pdfCount + 1
+    suPDFCount = suPDFCount + 1
+    offPDFCount = offPDFCount + 1
 
+    ' Clear Acrobat objects
+    Set AcroForm = Nothing
+    Set AcroPDDoc = Nothing
 End If
+Set AcroAVDoc = Nothing
+
 On Error GoTo 0 ' Reset error handling after critical code
 NextIteration:
 Next i
 
-' Display a message after completion
+' Write the number of generated PDFs to the log file
+Print #logFile, "SUPOFFCOD: " & currentSUPOFFCOD & " generated " & suPDFCount & " PDFs."
+'Print #logFile, "OFFCOD: " & currentOFFCOD & " generated " & offPDFCount & " PDFs."
+
+' Close Acrobat application
+AcroApp.Exit
+Set AcroApp = Nothing
+
+' Close the log file
+Close #logFile
+
+' Display completion message
 MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
 End Sub
-
-Sub ImportDataFromPP01()
-
-    ' Declare variables
-    Dim ws1 As Worksheet, wsCurrent As Worksheet
-    Dim wbSource As Workbook
-    Dim lastRow1 As Long
-    Dim i As Long
-    Dim sourcePath As String
-    Dim sourceFileName As String
-    
-    ' Define current workbook and worksheet
-    Set wsCurrent = ThisWorkbook.Sheets("MAIN")
-    
-    ' Define the path and source file name
-    sourcePath = ThisWorkbook.Path & "\"
-    sourceFileName = "(1)ALLDATAPP012.xlsm"
-    
-    ' Log the source path and file name
-    Debug.Print "Source Path: " & sourcePath
-    Debug.Print "Source File Name: " & sourceFileName
-    
-    ' Open the source workbook (ALLDATAPP01.xlsm)
-    Set wbSource = Workbooks.Open(sourcePath & sourceFileName)
-    Set ws1 = wbSource.Sheets("PP012_PAPER")
-    
-    ' Log when the source workbook is opened
-    Debug.Print "Opened workbook: " & wbSource.Name
-    Debug.Print "Working on sheet: " & ws1.Name
-    
-    ' Find the last row with data in the source sheet
-    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
-    Debug.Print "Last row in source sheet: " & lastRow1
-    
-    ' Loop through each row in the source sheet starting from row 2
-    For i = 2 To lastRow1
-        ' Log the current row being processed
-        Debug.Print "Processing row: " & i
-        
-        ' ¤Ñ´ÅÍ¡¤èÒáµèÅÐà«ÅÅì¨Ò¡ ws1 ä»ÂÑ§ wsCurrent
-        wsCurrent.Cells(i, "A").Value = "'" & ws1.Cells(i, "A").Value  ' NID with leading '
-        wsCurrent.Cells(i, "C").Value = ws1.Cells(i, "C").Value  ' TITNAM
-        wsCurrent.Cells(i, "D").Value = ws1.Cells(i, "D").Value  ' FIRNAM
-        wsCurrent.Cells(i, "E").Value = ws1.Cells(i, "E").Value  ' MIDNAM
-        wsCurrent.Cells(i, "F").Value = ws1.Cells(i, "F").Value  ' LASNAM
-        wsCurrent.Cells(i, "H").Value = ws1.Cells(i, "H").Value  ' ENGNAM
-        wsCurrent.Cells(i, "I").Value = ws1.Cells(i, "G").Value  ' IMPIDAT
-        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "I").Value  ' OFFCOD
-        wsCurrent.Cells(i, "J").Value = ws1.Cells(i, "J").Value  ' OFFNAM
-        wsCurrent.Cells(i, "K").Value = ws1.Cells(i, "K").Value  ' SUPOFFCOD
-        wsCurrent.Cells(i, "L").Value = ws1.Cells(i, "L").Value  ' SUPOFFNAM
-        wsCurrent.Cells(i, "M").Value = ws1.Cells(i, "M").Value  ' IMPORG
-        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "N").Value  ' BLDGNAM
-        wsCurrent.Cells(i, "O").Value = ws1.Cells(i, "O").Value  ' ROOMNO
-        wsCurrent.Cells(i, "P").Value = ws1.Cells(i, "P").Value  ' FLOORNO
-        wsCurrent.Cells(i, "Q").Value = ws1.Cells(i, "Q").Value  ' VILLAGE
-        wsCurrent.Cells(i, "R").Value = ws1.Cells(i, "R").Value  ' ADDNO
-        wsCurrent.Cells(i, "S").Value = ws1.Cells(i, "S").Value  ' MOONO
-        wsCurrent.Cells(i, "T").Value = ws1.Cells(i, "T").Value  ' SOINAM
-        wsCurrent.Cells(i, "U").Value = ws1.Cells(i, "U").Value  ' YAEK
-        wsCurrent.Cells(i, "V").Value = ws1.Cells(i, "V").Value  ' THNNAM
-        wsCurrent.Cells(i, "W").Value = ws1.Cells(i, "W").Value  ' TAMCOD
-        wsCurrent.Cells(i, "X").Value = ws1.Cells(i, "X").Value  ' TAMNAM
-        wsCurrent.Cells(i, "Y").Value = ws1.Cells(i, "Y").Value ' AMPCOD
-        wsCurrent.Cells(i, "Z").Value = ws1.Cells(i, "Z").Value ' AMPNAM
-        wsCurrent.Cells(i, "AA").Value = ws1.Cells(i, "AA").Value ' PROVCOD
-        wsCurrent.Cells(i, "AB").Value = ws1.Cells(i, "AB").Value ' PROVNAM
-        wsCurrent.Cells(i, "AC").Value = ws1.Cells(i, "AC").Value ' PASCOD
-        wsCurrent.Cells(i, "AD").Value = ws1.Cells(i, "AD").Value
-
-        
-        ' Log the NID and other key data being imported for this row
-        Debug.Print "NID: " & ws1.Cells(i, "A").Value & " | TITNAM: " & ws1.Cells(i, "C").Value & _
-                    " | FIRNAM: " & ws1.Cells(i, "D").Value & " | SUPOFFNAM: " & ws1.Cells(i, "L").Value
-    Next i
-
-    ' Close the source workbook without saving
-    wbSource.Close False
-    Debug.Print "Closed workbook: " & sourceFileName
-
-    ' Inform the user that the process is complete
-    MsgBox "Data imported successfully from ALLDATAPP01.xlsm", vbInformation
-
-End Sub
-Sub GenerateRandomNumbersInN()
-    Dim ws As Worksheet
-    Dim lastRow As Long
-    Dim i As Long
-    Dim prefix As String
-    Dim currentYear As String
-    Dim randomNumber As Integer
-    Dim generatedValue As String
-
-    ' Set the worksheet
-    Set ws = ThisWorkbook.Sheets("MAIN") ' Change to your actual sheet name
-
-    ' Find the last row in column L
-    lastRow = ws.Cells(ws.Rows.count, "L").End(xlUp).Row
-
-    ' Get the current Thai year
-    currentYear = Year(Date) + 543 ' Convert to Thai year
-
-    ' Loop through each row
-    For i = 3 To lastRow ' Start from row 2 (assuming row 1 is headers)
-        ' Get the first 5 characters from cell L
-        If Len(ws.Cells(i, "L").Value) >= 5 Then
-            prefix = Left(ws.Cells(i, "L").Value, 5)
-        Else
-            prefix = ws.Cells(i, "L").Value ' If less than 5 characters, use the whole value
-        End If
-        
-        ' Generate a random 3-digit number
-        randomNumber = Application.WorksheetFunction.RandBetween(0, 999)
-        
-        ' Create the new value in the desired format
-        generatedValue = prefix & "/" & Format(randomNumber, "000") & "/" & currentYear ' Combine values with slashes
-
-        ' Assign the value to cell N
-        ws.Cells(i, "N").Value = generatedValue
-    Next i
-
-    MsgBox "Random number generation in cell N completed!", vbInformation
-End Sub
-Sub RANDOM_BRAN()
-    Dim ws1 As Worksheet, ws2 As Worksheet, wsAddress As Worksheet
-    Dim lastRow1 As Long, lastRow2 As Long, lastRowAddress As Long
-    Dim i As Long, j As Long
-    Dim NID As String, BRANAM As String, TITCOD As String
-    Dim BRATITNAM As String ' New variable for TITNAM
-    Dim BLDGNAM As String, roomNo As String, floorNo As String, VILLAGE As String
-    Dim ADDNO As String, moono As String, SOINAM As String, YAEK As String
-    Dim THNNAM As String, TAMCOD As String, PROVCOD As String
-    Dim AMPCOD As String, POSCOD As String
-    Dim TAMNAM As String, AMPNAM As String, PROVNAM As String
-    Dim NewBRANO As String
-    Dim randomRow As Long
-
-    ' Set the worksheets to the respective sheet names
-    Set ws1 = ThisWorkbook.Sheets("MAIN")
-    Set ws2 = ThisWorkbook.Sheets("BRAN")
-    Set wsAddress = ThisWorkbook.Sheets("DBADDRESS")
-
-    ' Find the last row with data in NID_DETAIL and DBADDRESS
-    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
-    lastRowAddress = wsAddress.Cells(wsAddress.Rows.count, "A").End(xlUp).Row
-
-    Debug.Print "Last row in NID_DETAIL: " & lastRow1
-    Debug.Print "Last row in DBADDRESS: " & lastRowAddress
-
-    ' Loop through each row in NID_DETAIL and generate random BRANO
-    For i = 2 To lastRow1
-        ' Get NID and BRANAM from current row
-        NID = ws1.Cells(i, "A").Value
-        BRATITNAM = ws1.Cells(i, "C").Value ' Get BRATITNAM from column C
-        BRANAM = ws1.Cells(i, "D").Value ' Get BRANAM from column D
-
-        Debug.Print "Processing NID: " & NID
-
-        ' Generate 2 branches (BRANO)
-        For j = 1 To 2
-            ' Assign NewBRANO as 1 or 2
-            NewBRANO = j
-            Debug.Print "Creating branch: " & NewBRANO
-
-            ' Get random row from DBADDRESS for address details
-            randomRow = Int((lastRowAddress - 2 + 1) * Rnd + 2)
-            Debug.Print "Random row selected from DBADDRESS: " & randomRow
-
-            ' Fetch random address details from DBADDRESS
-            BLDGNAM = wsAddress.Cells(randomRow, "A").Value
-            roomNo = wsAddress.Cells(randomRow, "B").Value
-            floorNo = wsAddress.Cells(randomRow, "C").Value
-            VILLAGE = wsAddress.Cells(randomRow, "D").Value
-            ADDNO = wsAddress.Cells(randomRow, "E").Value
-            moono = wsAddress.Cells(randomRow, "F").Value
-            SOINAM = wsAddress.Cells(randomRow, "G").Value
-            YAEK = wsAddress.Cells(randomRow, "H").Value
-            THNNAM = wsAddress.Cells(randomRow, "I").Value
-            TAMCOD = wsAddress.Cells(randomRow, "J").Value
-            AMPCOD = wsAddress.Cells(randomRow, "K").Value
-            PROVCOD = wsAddress.Cells(randomRow, "L").Value
-            POSCOD = wsAddress.Cells(randomRow, "M").Value
-            TAMNAM = wsAddress.Cells(randomRow, "N").Value
-            AMPNAM = wsAddress.Cells(randomRow, "O").Value
-            PROVNAM = wsAddress.Cells(randomRow, "P").Value
-
-            Debug.Print "Address selected - BLDGNAM: " & BLDGNAM & ", ROOMNO: " & roomNo & ", TAMNAM: " & TAMNAM
-
-            ' Insert the new random branch data into BRANO_DETAIL
-            lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row + 1
-            ws2.Cells(lastRow2, "A").Value = NID
-            ws2.Cells(lastRow2, "B").Value = NewBRANO
-            ws2.Cells(lastRow2, "C").Value = BRATITNAM ' Insert BRATITNAM into column C
-            ws2.Cells(lastRow2, "D").Value = BRANAM & " BRANO " & NewBRANO ' Insert BRANAM into column D
-            ws2.Cells(lastRow2, "E").Value = BLDGNAM
-            ws2.Cells(lastRow2, "F").Value = roomNo
-            ws2.Cells(lastRow2, "G").Value = floorNo
-            ws2.Cells(lastRow2, "H").Value = VILLAGE
-            ws2.Cells(lastRow2, "I").Value = ADDNO
-            ws2.Cells(lastRow2, "J").Value = moono
-            ws2.Cells(lastRow2, "K").Value = SOINAM
-            ws2.Cells(lastRow2, "L").Value = YAEK
-            ws2.Cells(lastRow2, "M").Value = THNNAM
-            ws2.Cells(lastRow2, "N").Value = TAMCOD
-            ws2.Cells(lastRow2, "P").Value = AMPCOD
-            ws2.Cells(lastRow2, "R").Value = PROVCOD
-            ws2.Cells(lastRow2, "T").Value = POSCOD
-            ws2.Cells(lastRow2, "O").Value = TAMNAM
-            ws2.Cells(lastRow2, "Q").Value = AMPNAM
-            ws2.Cells(lastRow2, "S").Value = PROVNAM
-
-            Debug.Print "Inserted new branch for NID: " & NID & " with BRANO: " & NewBRANO
-        Next j
-    Next i
-
-    MsgBox "Branches created successfully for all NID in Sheet1!"
-End Sub
-Sub CountMatchingValues()
-    Dim wsNID As Worksheet
-    Dim wsBRANO As Worksheet
-    Dim lastRowNID As Long
-    Dim lastRowBRANO As Long
-    Dim NID As Variant
-    Dim countBRANO As Long
-    Dim i As Long, j As Long
-
-    Set wsNID = ThisWorkbook.Sheets("MAIN")
-    Set wsBRANO = ThisWorkbook.Sheets("BRAN")
-    
-    lastRowNID = wsNID.Cells(wsNID.Rows.count, "A").End(xlUp).Row
-    lastRowBRANO = wsBRANO.Cells(wsBRANO.Rows.count, "A").End(xlUp).Row
-    
-    ' Debug log - starting the process
-    Debug.Print "Starting to count matching values between MAIN and BRAN sheets"
-
-    For i = 2 To lastRowNID
-        NID = wsNID.Cells(i, "A").Value
-        countBRANO = 0
-        
-        ' Debug log - current NID being processed
-        Debug.Print "Processing NID: " & NID
-        
-        For j = 2 To lastRowBRANO
-            If wsBRANO.Cells(j, "A").Value = NID And wsBRANO.Cells(j, "B").Value > 0 Then
-                countBRANO = countBRANO + 1
-                
-                ' Debug log - matching value found
-                Debug.Print "Match found for NID " & NID & " in BRAN at row " & j & ", count now: " & countBRANO
-            End If
-        Next j
-        
-        wsNID.Cells(i, "B").Value = countBRANO
-        
-        ' Debug log - final count for the current NID
-        Debug.Print "Total matches for NID " & NID & ": " & countBRANO
-    Next i
-    
-    ' Debug log - finished processing
-    Debug.Print "Finished counting matching values"
-End Sub
-Sub AssignRandomAddressData()
-    Dim ws1 As Worksheet ' MAIN
-    Dim ws2 As Worksheet ' COU
-    Dim wsAddress As Worksheet ' COUADDRESS
-    Dim lastRowMain As Long
-    Dim lastRowAddress As Long
-    Dim i As Long
-    Dim randomRow As Long
-    Dim log As String ' Debug log string
-
-    ' Set worksheets
-    Set ws1 = ThisWorkbook.Sheets("MAIN")
-    Set ws2 = ThisWorkbook.Sheets("COU")
-    Set wsAddress = ThisWorkbook.Sheets("COUADDRESS")
-
-    ' Get last rows in each sheet
-    lastRowMain = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
-    lastRowAddress = wsAddress.Cells(wsAddress.Rows.count, "A").End(xlUp).Row
-
-    ' Check if COUADDRESS has enough rows
-    If lastRowAddress < 2 Then
-        MsgBox "The COUADDRESS sheet does not contain enough data.", vbExclamation
-        Exit Sub
-    End If
-
-    ' Loop through each NID in the MAIN sheet starting from row 2
-    For i = 2 To lastRowMain
-        ' Get the NID from the MAIN sheet
-        Dim NID As Variant
-        NID = ws1.Cells(i, "A").Value
-        
-        ' Get a random row from COUADDRESS
-        randomRow = Application.WorksheetFunction.RandBetween(2, lastRowAddress)
-
-        ' Fill the corresponding data in COU sheet
-        ws2.Cells(i, "A").Value = "'" & NID ' NID
-        ws2.Cells(i, "B").Value = wsAddress.Cells(randomRow, "A").Value ' OVBLDGNAM
-        ws2.Cells(i, "C").Value = wsAddress.Cells(randomRow, "B").Value ' OVADDNO
-        ws2.Cells(i, "D").Value = wsAddress.Cells(randomRow, "C").Value ' OVTHNNAM
-        ws2.Cells(i, "E").Value = wsAddress.Cells(randomRow, "D").Value ' OVCITY
-        ws2.Cells(i, "F").Value = wsAddress.Cells(randomRow, "E").Value ' OVSTAT
-        ws2.Cells(i, "G").Value = wsAddress.Cells(randomRow, "F").Value ' OVCOUCOD
-        ws2.Cells(i, "H").Value = wsAddress.Cells(randomRow, "G").Value ' OVCOUNAM
-        ws2.Cells(i, "I").Value = wsAddress.Cells(randomRow, "H").Value '
-        ws2.Cells(i, "J").Value = wsAddress.Cells(randomRow, "I").Value '
-
-        ' Debug logging and null check
-        log = "Row " & i & ": "
-        Dim j As Long
-        For j = 1 To 9 ' Check cells B to J
-            If ws2.Cells(i, j + 1).Value = "(null)" Then
-                ws2.Cells(i, j + 1).ClearContents
-                log = log & "Cell " & ws2.Cells(i, j + 1).Address & " cleared (was '(null)'). "
-            Else
-                log = log & "Cell " & ws2.Cells(i, j + 1).Address & " = " & ws2.Cells(i, j + 1).Value & ". "
-            End If
-        Next j
-        Debug.Print log ' Output debug log to Immediate Window
-    Next i
-
-    ' Notify that the operation is complete
-    MsgBox "Address data assigned successfully!", vbInformation
-End Sub
-
-
 
