@@ -134,8 +134,14 @@ Sub FillPDFWithMultipleSheet_PP01()
     Dim currentDateTime As String
     currentDateTime = Format(Now, "yyyy-mm-dd hh:mm:ss")
     
-    ' Initialize a counter for the number of PDFs created
-    Dim pdfCount As Integer
+    Dim pdfCount As Integer, suPDFCount As Integer, offPDFCount As Integer
+    Dim logFilePath As String, logFile As Integer
+    Dim currentSUPOFFCOD As String, currentOFFCOD As String
+    
+    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFile = FreeFile
+    Open logFilePath For Append As #logFile
+        
     pdfCount = 0
     
     'PDF FILENAM + HEADER
@@ -583,51 +589,66 @@ Sub FillPDFWithMultipleSheet_PP01()
                     Next l
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  ' Save the filled PDF
-        Dim FileNumber As Integer
-        Dim FileName As String
-        Dim folderPath As String
-        Dim subfolderPath As String
-        
-    ' Check the first two digits of SUPOFFCOD
-    If Left(SUPOFFCOD, 2) < "04" Then
-        ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
-        folderPath = ThisWorkbook.Path & "\" & SUPOFFCOD & "\"
-        FileName = folderPath & SUPOFFCOD & "-PP01-P-"
-    Else
-        ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
-        folderPath = ThisWorkbook.Path & "\" & OFFCOD & "\"
-        FileName = folderPath & OFFCOD & "-PP01-P-"
+Dim FileNumber As Integer
+Dim FileName As String
+Dim folderPath As String
+Dim subfolderPath As String
+
+' Check if the current SUPOFFCOD is different from the previously used one
+If SUPOFFCOD <> currentSUPOFFCOD Then
+    ' If currentSUPOFFCOD is not empty, print the number of PDFs generated
+    If currentSUPOFFCOD <> "" Then
+        Print #logFile, "SUPOFFCOD: " & currentSUPOFFCOD & " generated " & suPDFCount & " PDFs."
     End If
+    suPDFCount = 0
+    currentSUPOFFCOD = SUPOFFCOD
+End If
 
-    ' Check if the folder exists, if not, create it
-    If Dir(folderPath, vbDirectory) = "" Then
-        MkDir folderPath
+' Check if the current OFFCOD is different from the previously used one
+If OFFCOD <> currentOFFCOD Then
+    ' If currentOFFCOD is not empty, print the number of PDFs generated
+    If currentOFFCOD <> "" Then
+        'Print #logFile, "OFFCOD: " & currentOFFCOD & " generated " & offPDFCount & " PDFs."
     End If
+    offPDFCount = 0
+    currentOFFCOD = OFFCOD
+End If
 
-    ' Check for existing files and generate a unique name
-    FileNumber = 1
-    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
-        FileNumber = FileNumber + 1
-    Loop
-    
-          If FileNumber > 10 Then
-            subfolderPath = folderPath & "spare\"
-            If Dir(subfolderPath, vbDirectory) = "" Then
-                MkDir subfolderPath
-            End If
-            FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
-        End If
-    
-    ' Construct the final file name
-    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+' Check and set the path for saving the PDF
+If Left(SUPOFFCOD, 2) < "04" Then
+    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    FileName = folderPath & SUPOFFCOD & "-PP01-P-"
+Else
+    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    FileName = folderPath & OFFCOD & "-PP01-P-"
+End If
 
-    ' Save the PDF file
-    Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+' Create the folder if it does not exist
+If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+
+' Set a unique file number for the PDF
+FileNumber = 1
+Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+    FileNumber = FileNumber + 1
+Loop
+
+' If the number of files exceeds 10, create a backup folder and rename the file
+If FileNumber > 10 Then
+    folderPath = folderPath & "spare\"
+    If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+    FileName = folderPath & SUPOFFCOD & "-" & NID & "-"
+End If
+OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+
+' Save the PDF
     AcroPDDoc.Save 1, OutputPDF
+    Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
     AcroAVDoc.Close False
 
-    ' Count the number of PDFs generated
+    ' Increase the PDF count
     pdfCount = pdfCount + 1
+    suPDFCount = suPDFCount + 1
+    offPDFCount = offPDFCount + 1
 
         ' Release Acrobat objects to free memory
         Set AcroForm = Nothing
@@ -637,18 +658,23 @@ Sub FillPDFWithMultipleSheet_PP01()
         End If
         Set AcroAVDoc = Nothing
 
-    End If
-    End If
-    On Error GoTo 0 ' Reset error handling after critical code
+End If
+End If
+On Error GoTo 0 ' Reset error handling after critical code
 NextIteration:
-    Next i
-    
-    ' Cleanup Acrobat application
-    If Not AcroApp Is Nothing Then
-        AcroApp.Exit
-    End If
-    Set AcroApp = Nothing
-    
-    ' Display a message after completion
-    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
-    End Sub
+Next i
+
+' Write the number of generated PDFs to the log file
+Print #logFile, "SUPOFFCOD: " & currentSUPOFFCOD & " generated " & suPDFCount & " PDFs."
+'Print #logFile, "OFFCOD: " & currentOFFCOD & " generated " & offPDFCount & " PDFs."
+
+' Close Acrobat application
+If Not AcroApp Is Nothing Then AcroApp.Exit
+Set AcroApp = Nothing
+
+' Close the log file
+Close #logFile
+
+' Display completion message
+MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+End Sub
