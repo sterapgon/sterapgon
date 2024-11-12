@@ -1,0 +1,131 @@
+Sub HighlightUniqueValuesInJAndVWithLog()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim cellJ As Range, cellV As Range
+    Dim countJ As Long, countV As Long
+    
+    ' Define the worksheet to check (modify the sheet name as needed)
+    Set ws = ThisWorkbook.Sheets("Sheet1")
+    
+    ' Find the last row with data in columns J and V
+    lastRow = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+    If ws.Cells(ws.Rows.Count, "V").End(xlUp).Row > lastRow Then
+        lastRow = ws.Cells(ws.Rows.Count, "V").End(xlUp).Row
+    End If
+    
+    ' Loop through each cell to check for unique values in column J and V only
+    For Each cellJ In ws.Range("J2:J" & lastRow)
+        ' Get the corresponding value in column V
+        Set cellV = ws.Range("V" & cellJ.Row)
+        
+        ' Count occurrences of the value in column J
+        countJ = Application.WorksheetFunction.CountIf(ws.Range("J2:J" & lastRow), cellJ.Value)
+        
+        ' Count occurrences of the value in column V
+        countV = Application.WorksheetFunction.CountIf(ws.Range("V2:V" & lastRow), cellV.Value)
+        
+        ' Debug log for checking each cell value in column J and V
+        Debug.Print "Checking J: " & cellJ.Value & " at row " & cellJ.Row & " - Count: " & countJ & " times"
+        Debug.Print "Checking V: " & cellV.Value & " at row " & cellV.Row & " - Count: " & countV & " times"
+        
+        ' If both values are unique and not equal
+        If countJ = 1 And countV = 1 And cellJ.Value <> cellV.Value And Not IsEmpty(cellJ.Value) And Not IsEmpty(cellV.Value) Then
+            cellJ.Interior.Color = RGB(255, 255, 0) ' Highlight unique value in column J with yellow
+            cellV.Interior.Color = RGB(255, 255, 0) ' Highlight unique value in column V with yellow
+            
+            ' Log row number of unique values
+            Debug.Print "Unique value found at row " & cellJ.Row & ": J = " & cellJ.Value & ", V = " & cellV.Value
+        Else
+            cellJ.Interior.ColorIndex = xlNone ' Clear color if not a unique value
+            cellV.Interior.ColorIndex = xlNone ' Clear color if not a unique value
+        End If
+    Next cellJ
+    
+    MsgBox "Unique value check completed!", vbInformation
+End Sub
+
+Sub TrimDataInKAndVWithLog()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim cell As Range
+    
+    ' Define the worksheet to trim data (in this case, Sheet1)
+    Set ws = ThisWorkbook.Sheets("Sheet1")
+    
+    ' Find the last row with data in columns K or V
+    lastRow = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+    If ws.Cells(ws.Rows.Count, "V").End(xlUp).Row > lastRow Then
+        lastRow = ws.Cells(ws.Rows.Count, "V").End(xlUp).Row
+    End If
+    
+    ' Loop through and trim data in column K
+    For Each cell In ws.Range("J2:J" & lastRow)
+        If Not IsEmpty(cell.Value) Then
+            ' Log before trimming
+            Debug.Print "Before Trim - Row: " & cell.Row & " Value: '" & cell.Value & "'"
+            cell.Value = Trim(cell.Value) ' Trim spaces from the cell value
+            ' Log after trimming
+            Debug.Print "After Trim - Row: " & cell.Row & " Value: '" & cell.Value & "'"
+        End If
+    Next cell
+    
+    ' Loop through and trim data in column V
+    For Each cell In ws.Range("V2:V" & lastRow)
+        If Not IsEmpty(cell.Value) Then
+            ' Log before trimming
+            Debug.Print "Before Trim - Row: " & cell.Row & " Value: '" & cell.Value & "'"
+            cell.Value = Trim(cell.Value) ' Trim spaces from the cell value
+            ' Log after trimming
+            Debug.Print "After Trim - Row: " & cell.Row & " Value: '" & cell.Value & "'"
+        End If
+    Next cell
+    
+    MsgBox "Data in columns K and V has been trimmed successfully", vbInformation
+End Sub
+    
+Sub RemoveDuplicatesWithBackup()
+    Dim ws As Worksheet
+    Dim backupWs As Worksheet
+    Dim dataRange As Range
+    Dim lastRow As Long
+    Dim duplicateRange As Range
+    Dim backupLastRow As Long
+    
+    ' ตรวจสอบว่ามีชีท BackupDeletedData หรือยัง
+    On Error Resume Next
+    Set backupWs = ThisWorkbook.Sheets("BackupDeletedData")
+    On Error GoTo 0
+    If backupWs Is Nothing Then
+        Set backupWs = ThisWorkbook.Sheets.Add
+        backupWs.Name = "BackupDeletedData"
+    Else
+        backupWs.Cells.Clear ' ล้างข้อมูลเก่าในชีทสำรอง
+    End If
+    
+    ' เพิ่มหัวตารางในชีทสำรอง
+    backupWs.Range("A1:BW1").Value = ThisWorkbook.Sheets(1).Range("A1:BW1").Value
+
+    ' วนลูปทุกชีทเพื่อสำรองและลบข้อมูลซ้ำ
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name <> "BackupDeletedData" Then ' ยกเว้นชีทสำรอง
+            ' หาแถวสุดท้ายที่มีข้อมูลในคอลัมน์ C
+            lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+            
+            ' ตั้งค่าเรนจ์ที่ต้องการตรวจสอบข้อมูลซ้ำ
+            Set dataRange = ws.Range("$A$1:$BW$" & lastRow)
+            
+            ' ทำการลบข้อมูลซ้ำแต่สำรองข้อมูลก่อน
+            dataRange.RemoveDuplicates Columns:=2, Header:=xlYes
+            
+            ' คัดลอกข้อมูลที่ถูกลบไปยังชีทสำรอง
+            Set duplicateRange = dataRange.SpecialCells(xlCellTypeConstants) ' เลือกเฉพาะค่าคงที่
+            If Not duplicateRange Is Nothing Then
+                backupLastRow = backupWs.Cells(backupWs.Rows.Count, "A").End(xlUp).Row + 1
+                duplicateRange.Copy backupWs.Cells(backupLastRow, 1)
+            End If
+        End If
+    Next ws
+    
+    ' แจ้งเตือนเมื่อเสร็จสิ้น
+    MsgBox "Completed removing duplicates. Backup saved in 'BackupDeletedData' sheet.", vbInformation
+End Sub

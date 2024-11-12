@@ -307,7 +307,7 @@ Sub FillPDFWithMultipleSheet_PT01()
         pdfCount = pdfCount + 1
         
         ' ------------------- Update Log File and Counters -------------------
-        Print #logFile, "Generated PDF: " & OutputPDF
+        'Print #logFile, "Generated PDF: " & OutputPDF
         If SUPOFFCOD <> "" Then suPDFCount = suPDFCount + 1
         If OFFCOD <> "" Then offPDFCount = offPDFCount + 1
 
@@ -321,7 +321,7 @@ NextIteration:
     Next i
 
     ' ------------------- Log Summary and Close Resources -------------------
-    Print #logFile, "Total PDFs generated: " & pdfCount
+    'Print #logFile, "Total PDFs generated: " & pdfCount
     
     ' Log the number of PDFs generated for each SUPOFFCOD
     Dim key As Variant
@@ -330,7 +330,7 @@ NextIteration:
     Next key
 
     Close #logFile
-    AcroApp.Exit
+    'AcroApp.Exit
     Set AcroApp = Nothing
     MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
     Exit Sub
@@ -357,11 +357,10 @@ Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVa
     Dim folderPath As String, FileName As String, FileNumber As Integer
     folderPath = ThisWorkbook.Path & "\GENPDF\"
     If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
-    FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PP01-P-"
+    FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PT01-P-"
     FileNumber = 1
     Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
         FileNumber = FileNumber + 1
     Loop
     GeneratePDFPath = FileName & Format(FileNumber, "0000") & ".pdf"
 End Function
-

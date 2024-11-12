@@ -1,0 +1,451 @@
+Sub SplitDataBasedOnColumnJ()
+    Dim wsSource As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim sheetName As String
+    Dim cellValue As String
+    Dim targetWs As Worksheet
+    Dim dataRange As Range
+    Dim wsDict As Object
+
+    ' Set the source worksheet
+    Set wsSource = ThisWorkbook.Sheets("Sheet1")
+
+    ' Find the last row in column K of the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "C").End(xlUp).Row
+
+    ' Create a dictionary to track created sheets
+    Set wsDict = CreateObject("Scripting.Dictionary")
+
+    ' Loop through the rows in column K starting from row 2
+    For i = 2 To lastRow
+        cellValue = wsSource.Cells(i, "C").value
+
+        ' Get the first 5 characters from the value in column K
+        If Len(cellValue) >= 5 Then
+            sheetName = Left(cellValue, 5)
+
+            ' Check if the sheet with this name already exists
+            If Not wsDict.exists(sheetName) Then
+                ' If the sheet doesn't exist, create it
+                Set targetWs = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+                targetWs.Name = sheetName
+                wsDict.Add sheetName, targetWs.Name
+
+                ' Copy headers from the source sheet to the new sheet
+                wsSource.Rows(1).Copy targetWs.Rows(1)
+            End If
+
+            ' Get the sheet where the data should be copied
+            Set targetWs = ThisWorkbook.Sheets(wsDict(sheetName))
+
+            ' Copy the entire row to the target sheet
+            wsSource.Rows(i).Copy targetWs.Rows(targetWs.Cells(targetWs.Rows.Count, "A").End(xlUp).Row + 1)
+        End If
+    Next i
+
+    MsgBox "Data has been split based on column J."
+End Sub
+Sub ColorRandomRowsBasedOnCountAllSheets()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim groupSize As Long
+    Dim randomRow As Long
+    Dim randomRows() As Long
+    Dim groupCount As Long
+    Dim rng As Range
+    
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Count the total number of rows with data in column A for each sheet
+        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+        
+        ' Check if there are enough rows to divide into groups
+        If lastRow > 1 Then ' Ensure there's more than one row with data
+            ' Calculate the number of groups (16 groups)
+            groupCount = 16
+            groupSize = (lastRow - 1) \ groupCount ' Adjust to start from the second row
+            
+            ' Create an array to hold random rows
+            ReDim randomRows(1 To lastRow - 1)
+            For i = 1 To lastRow - 1
+                randomRows(i) = i + 1 ' Store row numbers starting from 2
+            Next i
+            
+            ' Shuffle the array
+            Call ShuffleArray(randomRows)
+            
+            ' Apply color to the randomly selected rows
+            For i = 1 To lastRow - 1
+                Dim rowIndex As Long
+                rowIndex = randomRows(i)
+                
+                Select Case i
+                    Case 1 To groupSize
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 204) ' Light yellow
+                    Case groupSize + 1 To groupSize * 2
+                        ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 255) ' Light blue
+                    Case groupSize * 2 + 1 To groupSize * 3
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 204) ' Light pink
+                    Case groupSize * 3 + 1 To groupSize * 4
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 153) ' Light orange
+                    Case groupSize * 4 + 1 To groupSize * 5
+                        ws.Rows(rowIndex).Interior.Color = RGB(204, 204, 255) ' Light purple
+                    Case groupSize * 5 + 1 To groupSize * 6
+                        ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 204) ' Light green
+                    Case groupSize * 6 + 1 To groupSize * 7
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 153) ' Light yellow-green
+                    Case groupSize * 7 + 1 To groupSize * 8
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 153, 153) ' Light coral
+                    Case groupSize * 8 + 1 To groupSize * 9
+                        ws.Rows(rowIndex).Interior.Color = RGB(153, 204, 255) ' Light sky blue
+                    Case groupSize * 9 + 1 To groupSize * 10
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 255) ' Light lavender
+                    Case groupSize * 10 + 1 To groupSize * 11
+                        ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 153) ' Light lime
+                    Case groupSize * 11 + 1 To groupSize * 12
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 153, 204) ' Light pinkish purple
+                    Case groupSize * 12 + 1 To groupSize * 13
+                        ws.Rows(rowIndex).Interior.Color = RGB(153, 255, 255) ' Light cyan
+                    Case groupSize * 13 + 1 To groupSize * 14
+                        ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 102) ' Bright yellow
+                    Case groupSize * 14 + 1 To groupSize * 15
+                        ws.Rows(rowIndex).Interior.Color = RGB(153, 255, 153) ' Light mint green
+                    Case Else
+                        ws.Rows(rowIndex).Interior.Color = RGB(204, 153, 255) ' Light violet
+                End Select
+            Next i
+        End If
+    Next ws
+
+    ' Notify that the operation is complete
+    MsgBox "Row coloring completed for all sheets with random grouping!", vbInformation
+End Sub
+
+' Function to shuffle an array randomly
+Sub ShuffleArray(arr() As Long)
+    Dim i As Long, j As Long
+    Dim temp As Long
+    Dim n As Long
+    
+    n = UBound(arr)
+    Randomize ' Initialize random number generator
+
+    For i = n To 2 Step -1
+        j = Int((i - 1) * Rnd) + 1 ' Generate a random index
+        ' Swap arr(i) with arr(j)
+        temp = arr(i)
+        arr(i) = arr(j)
+        arr(j) = temp
+    Next i
+End Sub
+Sub CopyRowsBasedOn16Colors()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim targetWs(1 To 16) As Worksheet
+    Dim targetRow(1 To 16) As Long
+    Dim colors As Variant
+    Dim j As Integer
+    
+    ' Define the RGB color for each of the 16 colors
+    colors = Array(RGB(255, 255, 204), RGB(204, 255, 255), RGB(255, 204, 204), _
+                   RGB(255, 204, 153), RGB(204, 204, 255), RGB(153, 255, 204), _
+                   RGB(255, 153, 204), RGB(255, 255, 153), RGB(153, 204, 255), _
+                   RGB(204, 255, 153), RGB(255, 204, 255), RGB(204, 255, 204), _
+                   RGB(255, 204, 153), RGB(153, 255, 255), RGB(153, 255, 153), _
+                   RGB(204, 153, 255)) ' Added 16th color
+
+    ' Create new sheets for each color
+    For j = 1 To 16
+        Set targetWs(j) = ThisWorkbook.Sheets.Add
+        targetWs(j).Name = "Color" & j & "Rows"
+        targetRow(j) = 1 ' Initialize target row for each sheet
+    Next j
+
+    ' Debug log - starting the process
+    Debug.Print "Starting to process all sheets to find colored rows"
+    
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Skip the newly created sheets
+        If ws.Name <> "1" And ws.Name <> "2" And ws.Name <> "3" And _
+           ws.Name <> "4" And ws.Name <> "5" And ws.Name <> "6" And _
+           ws.Name <> "7" And ws.Name <> "8" And ws.Name <> "9" And _
+           ws.Name <> "10" And ws.Name <> "11" And ws.Name <> "12" And _
+           ws.Name <> "13" And ws.Name <> "14" And ws.Name <> "15" And _
+           ws.Name <> "16" Then
+            
+            ' Debug log - current sheet being processed
+            Debug.Print "Processing sheet: " & ws.Name
+            
+            ' Find the last row with data in column A
+            lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+            
+            ' Debug log - number of rows in the current sheet
+            Debug.Print "Total rows in sheet " & ws.Name & ": " & lastRow
+            
+            ' Loop through each row to check color
+            For i = 2 To lastRow ' Start from row 2 (skip header)
+                With ws.Rows(i).Interior
+                    ' Check for each color and copy row to corresponding sheet
+                    For j = 1 To 16
+                        If .Color = colors(j - 1) Then
+                            ws.Rows(i).Copy targetWs(j).Rows(targetRow(j))
+                            targetRow(j) = targetRow(j) + 1 ' Move to next row in target sheet
+                            Debug.Print "Copied row " & i & " from sheet " & ws.Name & " to Color" & j & "Rows"
+                            Exit For ' Exit loop once the correct color is found
+                        End If
+                    Next j
+                End With
+            Next i
+        End If
+    Next ws
+
+    ' Debug log - finished processing
+    Debug.Print "Finished processing all sheets"
+    
+    ' Notify that the operation is complete
+    MsgBox "Row copying completed for all colored rows!", vbInformation
+End Sub
+
+
+Sub DeleteAllSheetsExceptNID()
+    Dim ws As Worksheet
+    Application.DisplayAlerts = False
+    For Each ws In ThisWorkbook.Worksheets
+        If ws.Name <> "Sheet1" Then
+            ws.Delete
+        End If
+    Next ws
+    Application.DisplayAlerts = True
+End Sub
+
+    Sub CountUniqueColumnCAndLog()
+        Dim ws As Worksheet
+        Dim lastRow As Long
+        Dim uniqueValues As Collection
+        Dim value As Variant
+        Dim logFilePath As String
+        Dim logFile As Object
+        Dim fso As Object
+        Dim wbPath As String
+        Dim spareSheet As Worksheet
+        Dim targetWs As Worksheet
+        Dim dict As Object
+        Dim key As Variant
+        Dim i As Long
+        Dim rowNum As Long
+    
+        ' Get the path of the current workbook
+        wbPath = ThisWorkbook.Path
+        logFilePath = wbPath & "\ColumnC_Unique_Values_Log.txt"
+    
+        ' Set up FileSystemObject to create and write to the log file
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        Set logFile = fso.CreateTextFile(logFilePath, True)
+    
+        ' Create a dictionary to track the count of values
+        Set dict = CreateObject("Scripting.Dictionary")
+        
+        ' Loop through each worksheet in the workbook
+        For Each ws In ThisWorkbook.Sheets
+            ' Skip the "spare sheet" if it exists already
+            If ws.Name <> "spare sheet" Then
+                ' Find the last row in column C
+                lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+    
+                ' Loop through all values in column C starting from row 2 (skip header)
+                For i = 2 To lastRow
+                    value = ws.Cells(i, "C").value
+                    If value <> "" Then
+                        ' Count the occurrences of each value
+                        If dict.exists(value) Then
+                            dict(value) = dict(value) + 1
+                        Else
+                            dict.Add value, 1
+                        End If
+                    End If
+                Next i
+            End If
+        Next ws
+    
+        ' Create the "spare sheet" if it doesn't exist
+        On Error Resume Next
+        Set spareSheet = ThisWorkbook.Sheets("spare sheet")
+        On Error GoTo 0
+        If spareSheet Is Nothing Then
+            Set spareSheet = ThisWorkbook.Sheets.Add
+            spareSheet.Name = "spare sheet"
+        End If
+        spareSheet.Cells.Clear ' Clear any existing data
+    
+        ' Write header to the log file
+        logFile.WriteLine "Column C Unique Values Log - " & Date & " " & Time
+        logFile.WriteLine String(50, "-")
+        
+        ' Write the values to the log and sheet
+        rowNum = 2
+        For Each key In dict.keys
+            ' If the count is 1, put it in the specific sheet for that value
+            If dict(key) = 1 Then
+                On Error Resume Next
+                Set targetWs = ThisWorkbook.Sheets(key)
+                On Error GoTo 0
+                
+                ' Create a sheet for the value if it doesn't exist
+                If targetWs Is Nothing Then
+                    Set targetWs = ThisWorkbook.Sheets.Add
+                    targetWs.Name = key
+                End If
+                
+                ' Find the next available row in the target sheet
+                targetWs.Cells(targetWs.Rows.Count, "A").End(xlUp).Row 1
+                
+                ' Write the unique value to the appropriate sheet
+                targetWs.Cells(targetWs.Cells(targetWs.Rows.Count, "A").End(xlUp).Row + 1, 1).value = key
+                
+                ' Reset targetWs for next iteration
+                Set targetWs = Nothing
+            Else
+                ' If the count is greater than 1, add to the "spare sheet"
+                spareSheet.Cells(rowNum, 1).value = key
+                spareSheet.Cells(rowNum, 2).value = dict(key)
+                rowNum = rowNum + 1
+            End If
+    
+            ' Write to the log file
+            logFile.WriteLine "Value: " & key & " - Occurrences: " & dict(key)
+        Next key
+    
+        ' Close the log file
+        logFile.Close
+    
+        ' Notify user of completion
+        MsgBox "The Column C unique values have been processed and logged to: " & logFilePath, vbInformation
+    End Sub
+    
+        Sub RemoveDuplicatesWithBackup()
+            Dim ws As Worksheet
+            Dim backupWs As Worksheet
+            Dim dataRange As Range
+            Dim lastRow As Long
+            Dim duplicateRange As Range
+            Dim backupLastRow As Long
+            
+            ' Attempt to get the BackupDeletedData sheet
+            On Error Resume Next
+            Set backupWs = ThisWorkbook.Sheets("BackupDeletedData")
+            On Error GoTo 0
+            If backupWs Is Nothing Then
+                Set backupWs = ThisWorkbook.Sheets.Add
+                backupWs.Name = "BackupDeletedData"
+                Debug.Print "BackupDeletedData sheet created."
+            Else
+                backupWs.Cells.Clear ' Clear existing data if sheet already exists
+                Debug.Print "BackupDeletedData sheet cleared."
+            End If
+            
+            ' Copy headers to the backup sheet
+            backupWs.Range("A1:BW1").value = ThisWorkbook.Sheets(1).Range("A1:BW1").value
+            Debug.Print "Headers copied to BackupDeletedData sheet."
+        
+            ' Loop through each sheet to process data and remove duplicates
+            For Each ws In ThisWorkbook.Sheets
+                If ws.Name <> "BackupDeletedData" Then ' Skip the backup sheet
+                    ' Find the last row with data in column C
+                    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+                    Debug.Print "Processing sheet: " & ws.Name & ", Last row in column C: " & lastRow
+                    
+                    ' Define the range to remove duplicates from
+                    Set dataRange = ws.Range("$A$1:$BW$" & lastRow)
+                    
+                    ' Remove duplicates based on column C
+                    dataRange.RemoveDuplicates Columns:=2, Header:=xlYes
+                    Debug.Print "Duplicates removed from sheet: " & ws.Name
+                    
+                    ' Identify any remaining duplicates to back up
+                    On Error Resume Next
+                    Set duplicateRange = dataRange.SpecialCells(xlCellTypeConstants) ' Capture constants only
+                    On Error GoTo 0
+                    If Not duplicateRange Is Nothing Then
+                        backupLastRow = backupWs.Cells(backupWs.Rows.Count, "A").End(xlUp).Row + 1
+                        duplicateRange.Copy backupWs.Cells(backupLastRow, 1)
+                        Debug.Print "Duplicate data from sheet: " & ws.Name & " copied to BackupDeletedData starting at row: " & backupLastRow
+                    Else
+                        Debug.Print "No duplicates found to backup in sheet: " & ws.Name
+                    End If
+                End If
+            Next ws
+            
+            ' Notify completion
+            MsgBox "Completed removing duplicates. Backup saved in 'BackupDeletedData' sheet.", vbInformation
+            Debug.Print "Duplicate removal and backup process completed."
+        End Sub
+        
+            Sub DeleteMatchingRecordsInBackup()
+                Dim ws As Worksheet
+                Dim backupWs As Worksheet
+                Dim lastRow As Long, i As Long, j As Long
+                Dim backupLastRow As Long
+                Dim foundCell As Range
+                Dim searchValue As String
+            
+                ' Set the reference to the BackupDeletedData sheet
+                Set backupWs = ThisWorkbook.Sheets("BackupDeletedData")
+                backupLastRow = backupWs.Cells(backupWs.Rows.Count, "D").End(xlUp).Row
+            
+                ' Loop through sheets 1 to 12
+                For Each ws In ThisWorkbook.Sheets
+                    If ws.Index >= 1 And ws.Index <= 12 Then
+                        lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+                        
+                        ' Loop through each cell in column D of the current sheet
+                        For i = 2 To lastRow
+                            searchValue = ws.Cells(i, "D").value
+                            Debug.Print "Searching for: " & searchValue & " in sheet: " & ws.Name
+            
+                            ' Search in BackupDeletedData for matching values in column D
+                            For j = backupLastRow To 2 Step -1
+                                If backupWs.Cells(j, "D").value = searchValue Then
+                                    Debug.Print "Match found for " & searchValue & " in BackupDeletedData at row: " & j
+                                    backupWs.Rows(j).Delete
+                                    backupLastRow = backupLastRow - 1
+                                    Debug.Print "Deleted row " & j & " from BackupDeletedData"
+                                End If
+                            Next j
+                        Next i
+                    End If
+                Next ws
+            
+                MsgBox "Matching records deleted from BackupDeletedData", vbInformation
+            End Sub
+            
+                Sub CountDataInColumnD()
+                    Dim ws As Worksheet
+                    Dim lastRow As Long
+                    Dim countTotal As Long
+                    Dim countSheet As Long
+                    
+                    countTotal = 0 ' Initialize total count
+                
+                    ' Loop through each sheet in the workbook
+                    For Each ws In ThisWorkbook.Sheets
+                        ' Find the last row in column D for the current sheet
+                        lastRow = ws.Cells(ws.Rows.Count, "D").End(xlUp).Row
+                        
+                        ' Count only if there is data from row 2 onwards
+                        If lastRow >= 2 Then
+                            countSheet = lastRow - 1 ' Subtract 1 to exclude the header row
+                            countTotal = countTotal + countSheet ' Add to the total count
+                            
+                            ' Debug log for the current sheet's count
+                            Debug.Print "Sheet: " & ws.Name & " - Count: " & countSheet
+                        End If
+                    Next ws
+                    
+                    ' Display the total count
+                    MsgBox "Total count of data in column D across all sheets: " & countTotal, vbInformation
+                End Sub
+                
+                                    
