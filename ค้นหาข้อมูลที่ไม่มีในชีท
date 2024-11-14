@@ -1,0 +1,56 @@
+Sub CompareValuesAndLogUnique()
+    Dim ws10 As Worksheet, wsNID As Worksheet
+    Dim dictValues10 As Object
+    Dim dictValuesNID As Object
+    Dim cell As Range
+    Dim resultLog As String
+    Dim valueNID As Variant ' Use Variant to hold keys of the dictionary
+    Dim logFile As String
+    Dim fso As Object, logStream As Object
+    
+    ' Set worksheets
+    Set ws10 = ThisWorkbook.Sheets("10")
+    Set wsNID = ThisWorkbook.Sheets("NID")
+    
+    ' Create dictionary to store unique values from sheet "10" column B
+    Set dictValues10 = CreateObject("Scripting.Dictionary")
+    ' Create dictionary to store unique values from sheet "NID" column B
+    Set dictValuesNID = CreateObject("Scripting.Dictionary")
+    
+    ' Loop through each cell in column B of sheet "10" to add to dictionary
+    For Each cell In ws10.Range("B2", ws10.Cells(ws10.Rows.Count, "B").End(xlUp))
+        If Not dictValues10.exists(cell.Value) Then
+            dictValues10.Add cell.Value, True
+        End If
+    Next cell
+    
+    ' Loop through each cell in column B of sheet "NID" to add to dictionary
+    For Each cell In wsNID.Range("B2", wsNID.Cells(wsNID.Rows.Count, "B").End(xlUp))
+        If Not dictValuesNID.exists(cell.Value) Then
+            dictValuesNID.Add cell.Value, True
+        End If
+    Next cell
+    
+    ' Initialize log result
+    resultLog = "Unique values in NID column B not found in sheet 10:" & vbCrLf
+    
+    ' Loop through each unique value in NID's dictionary
+    For Each valueNID In dictValuesNID.keys
+        ' Check if the value is not in sheet "10"
+        If Not dictValues10.exists(valueNID) Then
+            resultLog = resultLog & "Value: " & valueNID & " not found in sheet 10" & vbCrLf
+        End If
+    Next valueNID
+    
+    ' Set up log file path in the same location as workbook
+    logFile = ThisWorkbook.Path & "\NID_Missing_In_10_Log.txt"
+    
+    ' Create file system object and write to log file
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set logStream = fso.CreateTextFile(logFile, True)
+    logStream.WriteLine resultLog
+    logStream.Close
+    
+    ' Notify completion
+    MsgBox "Comparison completed. Log saved as " & logFile
+End Sub

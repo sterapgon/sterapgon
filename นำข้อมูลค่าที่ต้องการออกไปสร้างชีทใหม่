@@ -1,0 +1,38 @@
+Sub CopySpecificDataToNewSheet()
+    Dim wsSource As Worksheet
+    Dim wsNew As Worksheet
+    Dim lastRow As Long
+    Dim cell As Range
+    Dim targetRow As Long
+
+    ' Set the source sheet and the target sheet name
+    Set wsSource = ThisWorkbook.Sheets("NID")
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "I").End(xlUp).Row
+    
+    ' Create a new sheet named "NID_00005222"
+    On Error Resume Next ' Ignore error if the sheet already exists
+    Set wsNew = ThisWorkbook.Sheets("NID_00005222")
+    On Error GoTo 0
+    
+    ' If the sheet does not exist, create it
+    If wsNew Is Nothing Then
+        Set wsNew = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+        wsNew.Name = "NID_00005222"
+    Else
+        ' If the sheet exists, clear its contents before copying
+        wsNew.Cells.ClearContents
+    End If
+    
+    targetRow = 1 ' Start copying to the first row in the new sheet
+    
+    ' Loop through cells in column I to find "00005222"
+    For Each cell In wsSource.Range("I2:I" & lastRow)
+        If cell.Value = "00005222" Then
+            ' Copy the entire row with the matching value to the new sheet
+            wsSource.Rows(cell.Row).Copy Destination:=wsNew.Rows(targetRow)
+            targetRow = targetRow + 1
+        End If
+    Next cell
+    
+    MsgBox "Data for '00005222' has been copied to the sheet 'NID_00005222'."
+End Sub

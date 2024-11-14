@@ -1,0 +1,10 @@
+Sub DeleteAllSheetsExceptNID()
+    Dim ws As Worksheet
+    Application.DisplayAlerts = False
+    For Each ws In ThisWorkbook.Worksheets
+        If ws.Name <> "NID" Then
+            ws.Delete
+        End If
+    Next ws
+    Application.DisplayAlerts = True
+End Sub

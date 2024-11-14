@@ -539,3 +539,5 @@ End Sub
     ' Display the result in a message box
     MsgBox "The number of unique values in column K is: " & count
 End Sub
+
+    
