@@ -1,0 +1,254 @@
+Sub CopySingleInstanceToGOTOPT09()
+    Dim wsSource As Worksheet
+    Dim wsTarget As Worksheet
+    Dim lastRow As Long
+    Dim dict As Object
+    Dim cell As Range
+    Dim rowIndex As Long
+    Dim logFile As String
+    Dim fileNumber As Integer
+    Dim key As Variant
+    
+    ' Set the source sheet (SPARE)
+    Set wsSource = ThisWorkbook.Sheets("SPARE")
+    
+    ' Check if "GOTO PT09" sheet exists, if not, create it
+    On Error Resume Next
+    Set wsTarget = ThisWorkbook.Sheets("GOTO PT09")
+    On Error GoTo 0
+    If wsTarget Is Nothing Then
+        Set wsTarget = ThisWorkbook.Sheets.Add
+        wsTarget.Name = "GOTO PT09"
+    Else
+        wsTarget.Cells.Clear ' Clear data in GOTO PT09 if it already exists
+    End If
+
+    ' Find the last row with data in column B
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "B").End(xlUp).Row
+
+    ' Create Dictionary to store unique values and their counts
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    ' Set up the log file and open it for writing debug logs
+    logFile = ThisWorkbook.Path & "\debuglog_COUNT_SPARE_COPY.log"
+    fileNumber = FreeFile
+    Open logFile For Output As #fileNumber
+
+    Print #fileNumber, "Debug Log - Copy Single Instances from SPARE to GOTO PT09"
+    Print #fileNumber, "======================================================"
+
+    ' Count unique values in column B
+    For Each cell In wsSource.Range("B2:B" & lastRow) ' Start from row 2 to skip header
+        If cell.Value <> "" Then
+            If dict.exists(cell.Value) Then
+                dict(cell.Value) = dict(cell.Value) + 1
+            Else
+                dict.Add cell.Value, 1
+            End If
+        End If
+    Next cell
+
+    ' Copy only 1 row for each value if count is greater than 1
+    For Each key In dict.Keys
+        If dict(key) > 1 Then
+            ' Find the first row of the value to copy
+            For rowIndex = 2 To lastRow
+                If wsSource.Cells(rowIndex, "B").Value = key Then
+                    ' Copy the row to GOTO PT09 sheet
+                    wsSource.Rows(rowIndex).Copy Destination:=wsTarget.Cells(wsTarget.Rows.Count, 1).End(xlUp).Offset(1, 0)
+                    
+                    ' Log the copy operation in debug log
+                    Print #fileNumber, "Copied Value: " & key & " from SPARE row " & rowIndex & " to GOTO PT09."
+                    
+                    ' Delete the copied row from the source sheet
+                    wsSource.Rows(rowIndex).Delete
+                    lastRow = lastRow - 1 ' Adjust last row after deletion
+                    Exit For ' Exit after copying only 1 instance of the value
+                End If
+            Next rowIndex
+        End If
+    Next key
+
+    ' Close the log file
+    Close #fileNumber
+
+    ' Notify the user that the operation is complete
+    MsgBox "Single instances of duplicate values have been copied to GOTO PT09 and logged in debuglog_COUNT_SPARE_COPY.", vbInformation
+End Sub
+
+Sub CopySingleInstanceToGOTOPT09_BY_CASE()
+    Dim wsSource As Worksheet
+    Dim wsTarget As Worksheet
+    Dim lastRow As Long
+    Dim dict As Object
+    Dim cell As Range
+    Dim rowIndex As Long
+    Dim logFile As String
+    Dim fileNumber As Integer
+    Dim key As Variant
+    
+    ' Set the source sheet (SPARE)
+    Set wsSource = ThisWorkbook.Sheets("SPARE")
+    
+    ' Check if "GOTO PT09" sheet exists, if not, create it
+    On Error Resume Next
+    Set wsTarget = ThisWorkbook.Sheets("GOTO PT09")
+    On Error GoTo 0
+    If wsTarget Is Nothing Then
+        Set wsTarget = ThisWorkbook.Sheets.Add
+        wsTarget.Name = "GOTO PT09"
+    Else
+        wsTarget.Cells.Clear ' Clear data in GOTO PT09 if it already exists
+    End If
+
+    ' Find the last row with data in column B
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "B").End(xlUp).Row
+
+    ' Create Dictionary to store unique values and their counts
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    ' Set up the log file and open it for writing debug logs
+    logFile = ThisWorkbook.Path & "\debuglog_COUNT_SPARE_COPY.log"
+    fileNumber = FreeFile
+    Open logFile For Output As #fileNumber
+
+    Print #fileNumber, "Debug Log - Copy Single Instances from SPARE to GOTO PT09"
+    Print #fileNumber, "======================================================"
+
+    ' Count unique values in column B
+    For Each cell In wsSource.Range("B2:B" & lastRow) ' Start from row 2 to skip header
+        If cell.Value <> "" Then
+            If dict.exists(cell.Value) Then
+                dict(cell.Value) = dict(cell.Value) + 1
+            Else
+                dict.Add cell.Value, 1
+            End If
+        End If
+    Next cell
+
+    ' Copy only 1 row for each value if count is greater than 1
+    For Each key In dict.Keys
+        If dict(key) > 1 Then
+            ' Find the first row of the value to copy
+            For rowIndex = 2 To lastRow
+                If wsSource.Cells(rowIndex, "B").Value = key Then
+                    ' Check if column "I" matches "00002130" or "00002110"
+                    If wsSource.Cells(rowIndex, "I").Value = "00002130" Or wsSource.Cells(rowIndex, "I").Value = "00002110" Then
+                        ' Copy the row to GOTO PT09 sheet
+                        wsSource.Rows(rowIndex).Copy Destination:=wsTarget.Cells(wsTarget.Rows.Count, 1).End(xlUp).Offset(1, 0)
+                        
+                        ' Log the copy operation in debug log
+                        Print #fileNumber, "Copied Value: " & key & " from SPARE row " & rowIndex & " to GOTO PT09."
+                        
+                        ' Delete the copied row from the source sheet
+                        wsSource.Rows(rowIndex).Delete
+                        lastRow = lastRow - 1 ' Adjust last row after deletion
+                        Exit For ' Exit after copying only 1 instance of the value
+                    End If
+                End If
+            Next rowIndex
+        End If
+    Next key
+
+    ' Close the log file
+    Close #fileNumber
+
+    ' Notify the user that the operation is complete
+    MsgBox "Single instances of duplicate values have been copied to GOTO PT09 and logged in debuglog_COUNT_SPARE_COPY.", vbInformation
+End Sub
+
+Sub ClearNullValues()
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim lastRow As Long
+    Dim lastCol As Long
+    
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Find the last row and last column with data
+        lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+        lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+        
+        ' Loop through each cell in the used range of the sheet
+        For Each cell In ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
+            If cell.Value = "(null)" Then
+                cell.ClearContents
+                ' Debug log - indicate the cell cleared
+                Debug.Print "Cleared (null) in cell " & cell.Address & " of sheet " & ws.Name
+            End If
+        Next cell
+    Next ws
+    
+    ' Notify the user
+    MsgBox "All '(null)' values have been cleared from the workbook.", vbInformation
+End Sub
+Sub ResetAllSheetColorsAndResizeCells()
+    Dim ws As Worksheet
+    
+    ' Loop through each worksheet in the workbook
+    For Each ws In ThisWorkbook.Sheets
+        ' Clear any background color by setting Interior.ColorIndex to xlNone
+        ws.Cells.Interior.ColorIndex = xlNone
+        
+        ' Set all rows' height to 15
+        ws.Rows.RowHeight = 15
+        
+        ' Set all columns' width to 15
+        ws.Columns.ColumnWidth = 15
+        
+        ' Debug log - indicate the sheet color reset and resizing
+        Debug.Print "Cleared all colors and resized cells in sheet: " & ws.Name
+    Next ws
+    
+    ' Notify the user
+    MsgBox "All cell colors have been reset and cell sizes adjusted to 15 in every sheet.", vbInformation
+End Sub
+Sub CountUniqueValuesInSpare()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim dict As Object
+    Dim cell As Range
+    Dim logFile As String
+    Dim fileNumber As Integer
+    Dim key As Variant
+
+    ' Set the SPARE sheet
+    Set ws = ThisWorkbook.Sheets("SPARE")
+    
+    ' Find the last row with data in column B
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+    
+    ' Create a Dictionary to store unique values and their counts
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    ' Loop through column B and count unique values
+    For Each cell In ws.Range("B2:B" & lastRow) ' Start from row 2 to skip header
+        If cell.Value <> "" Then
+            If dict.exists(cell.Value) Then
+                dict(cell.Value) = dict(cell.Value) + 1
+            Else
+                dict.Add cell.Value, 1
+            End If
+        End If
+    Next cell
+    
+    ' Set the log file name and open the file for writing
+    logFile = ThisWorkbook.Path & "\COUNT_SPARE_SHEET.log"
+    fileNumber = FreeFile
+    Open logFile For Output As #fileNumber
+    
+    ' Write results to the log file
+    Print #fileNumber, "Count of unique values in SPARE Sheet (Column B)"
+    Print #fileNumber, "==========================================="
+    
+    For Each key In dict.Keys
+        Print #fileNumber, "Value: " & key & " - Count: " & dict(key)
+    Next key
+    
+    ' Close the log file
+    Close #fileNumber
+    
+    ' Notify the user that the log file has been created
+    MsgBox "Count of unique values has been saved to " & logFile, vbInformation
+End Sub
+
