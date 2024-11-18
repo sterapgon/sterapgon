@@ -1,0 +1,410 @@
+Sub FillPDFWithMultipleSheet_PP091()
+    ' Initialize Acrobat Application
+    Dim AcroApp As Object
+    Set AcroApp = CreateObject("AcroExch.App")
+    
+    ' Initialize Log File
+    Dim logFilePath As String, logFile As Integer
+    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFile = FreeFile
+    Open logFilePath For Append As #logFile
+    Print #logFile, "PDF Generation Log Started - " & Now()
+    
+    ' Initialize Workbook Sheets
+    Dim ws1 As Worksheet, ws2 As Worksheet, ws3 As Worksheet, ws4 As Worksheet
+    Set ws1 = ThisWorkbook.Sheets("DATA NID")
+    Set ws2 = ThisWorkbook.Sheets("EXTBUSPER")
+    Set ws3 = ThisWorkbook.Sheets("INCPARTY")
+    Set ws4 = ThisWorkbook.Sheets("INCPARNUM")
+
+    ' Initialize Row Counters
+    Dim lastRow1 As Long, lastRow2 As Long, lastRow3 As Long, lastRow4 As Long
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).Row
+    
+    ' Initialize Counters and Variables
+    Dim pdfCount As Integer: pdfCount = 0
+    Dim suPDFCount As Integer: suPDFCount = 0
+    Dim offPDFCount As Integer: offPDFCount = 0
+    Dim PrevSUPOFFCOD As String: PrevSUPOFFCOD = ""
+    Dim PrevOFFCOD As String: PrevOFFCOD = ""
+    Dim SUPOFFNUMBER As Integer: SUPOFFNUMBER = 0
+    Dim OFFNUMBER As Integer: OFFNUMBER = 0
+    Dim suPDFCountDict As Object
+    Set suPDFCountDict = CreateObject("Scripting.Dictionary")
+    
+    ' Iterate through records in DATA NID
+    Dim i As Long
+    For i = 2 To lastRow1
+        On Error GoTo ErrorHandler
+        ' Retrieve data from Sheet1 (NID DETAIL)
+        NID = ws1.Cells(i, "A").Value
+        CHGCOD = ws1.Cells(i, "B").Value
+        NUMBER = ws1.Cells(i, "C").Value
+        LTOFLG = ws1.Cells(i, "I").Value
+        SUPOFFNAM = ws1.Cells(i, "W").Value
+        OFFNAM = ws1.Cells(i, "U").Value
+        FIRNAM = ws1.Cells(i, "D").Value & " " & ws1.Cells(i, "F").Value & " " & ws1.Cells(i, "H").Value
+        BRANAM_1 = ws1.Cells(i, "Q").Value & " " & ws1.Cells(i, "S").Value
+        BLDGNAM = ws1.Cells(i, "Z").Value
+        ROOMNO = ws1.Cells(i, "AA").Value
+        FLOORNO = ws1.Cells(i, "AB").Value
+        VILLAGE = ws1.Cells(i, "AC").Value
+        ADDNO = ws1.Cells(i, "AD").Value
+        MOONO = ws1.Cells(i, "AE").Value
+        SOINAM = ws1.Cells(i, "AF").Value
+        YAEK = ws1.Cells(i, "AG").Value
+        THNNAM = ws1.Cells(i, "AH").Value
+        TAM_NAME = ws1.Cells(i, "AJ").Value
+        AMP_NAME = ws1.Cells(i, "AL").Value
+        PROV_NAME = ws1.Cells(i, "AN").Value
+        POSCOD = ws1.Cells(i, "AO").Value
+        TELNO = ws1.Cells(i, "AP").Value
+        EMAIL = ws1.Cells(i, "AQ").Value
+        SUPOFFCOD = ws1.Cells(i, "V").Value
+        OFFCOD = ws1.Cells(i, "T").Value
+        OLDBIZLICNO = ws1.Cells(i, "CD").Value
+        NEWBIZLICNO = ws1.Cells(i, "CE").Value
+
+        ' Path to the template PDF file
+        PDFPath = ThisWorkbook.Path & "\PP091-PAPER.pdf"
+        Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+        
+        ' Open the PDF template
+        If AcroAVDoc.Open(PDFPath, "") Then
+            Set AcroPDDoc = AcroAVDoc.GetPDDoc
+            Set AcroForm = AcroPDDoc.GetJSObject
+            
+            ' Check if the form object was retrieved successfully
+            If Not AcroForm Is Nothing Then
+                ' Fill PDF fields with data from Sheet1
+                If SUPOFFCOD <> PrevSUPOFFCOD Then
+                    If SUPOFFCOD <> "" Then
+                        suPDFCountDict(SUPOFFCOD) = suPDFCountDict(SUPOFFCOD) + 1
+                    End If
+                End If
+
+                If LTOFLG = 1 Then
+                    AcroForm.getField("LTOCHK").Value = "Yes"
+                End If
+                
+                ' Check the first two digits of SUPOFFCOD
+                If Left(SUPOFFCOD, 2) < "04" Then
+                    ' Case for SUPOFFCOD
+                    AcroForm.getField("SUP_CHK").Value = "Yes"
+                    AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+
+                    ' Reset and increment SUPOFFNUMBER if needed
+                    If SUPOFFCOD <> PrevSUPOFFCOD Then
+                        SUPOFFNUMBER = 0
+                    End If
+
+                    SUPOFFNUMBER = SUPOFFNUMBER + 1
+                    NUMBER = Format(SUPOFFNUMBER, "0000")
+                    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP091-P-" & NUMBER
+
+                    PrevSUPOFFCOD = SUPOFFCOD
+                Else
+                    ' Case for OFFCOD
+                    AcroForm.getField("OFF_CHK").Value = "Yes"
+                    AcroForm.getField("OFFNAM").Value = OFFNAM
+
+                    If OFFCOD <> PrevOFFCOD Then
+                        OFFNUMBER = 0
+                    End If
+
+                    OFFNUMBER = OFFNUMBER + 1
+                    NUMBER2 = Format(OFFNUMBER, "0000")
+                    AcroForm.getField("HEADER").Value = OFFCOD & "-PP091-P-" & NUMBER2
+
+                    PrevOFFCOD = OFFCOD
+                End If
+
+                ' Fill PDF fields for NID and FIRNAM
+                If Left(NID, 1) <> "0" Then
+                    ' NID = "0" & NID
+                End If
+                If Not AcroForm.getField("NID") Is Nothing Then
+                    AcroForm.getField("NID").Value = NID
+                End If
+
+                If Not AcroForm.getField("FIRNAM") Is Nothing Then
+                    AcroForm.getField("FIRNAM").Value = TITLENAM & " " & FIRNAM & " " & LASNAM
+                End If
+
+                ' Fill additional address fields if they exist
+                With AcroForm
+                    ' Assign only non-empty values to PDF fields
+                    If OLDBIZLICNO <> "" Then .getField("OLDBIZLICNO").Value = OLDBIZLICNO
+                    If NEWBIZLICNO <> "" Then .getField("NEWBIZLICNO").Value = NEWBIZLICNO
+                    If BLDGNAM <> "" Then .getField("BLDGNAM").Value = BLDGNAM
+                    If ROOMNO <> "" Then .getField("ROOMNO").Value = ROOMNO
+                    If FLOORNO <> "" Then .getField("FLOORNO").Value = FLOORNO
+                    If VILLAGE <> "" Then .getField("VILLAGE").Value = VILLAGE
+                    If ADDNO <> "" Then .getField("ADDNO").Value = ADDNO
+                    If MOONO <> "" Then .getField("MOONO").Value = MOONO
+                    If SOINAM <> "" Then .getField("SOINAM").Value = SOINAM
+                    If YAEK <> "" Then .getField("YAEK").Value = YAEK
+                    If THNNAM <> "" Then .getField("THNNAM").Value = THNNAM
+                    If TAM_NAME <> "" Then .getField("TAM_NAME").Value = TAM_NAME
+                    If AMP_NAME <> "" Then .getField("AMP_NAME").Value = AMP_NAME
+                    If PROV_NAME <> "" Then .getField("PROV_NAME").Value = PROV_NAME
+                    If POSCOD <> "" Then .getField("POSCOD").Value = POSCOD
+                    If TELNO <> "" Then .getField("TELNO").Value = TELNO
+                    If EMAIL <> "" Then .getField("EMAIL").Value = EMAIL
+                End With
+                
+                ' Process data from Sheet12 (EXTBUSPER)
+                    ' Declare variables
+                Dim j As Long
+                ' Set worksheet and last row
+                Set ws2 = ThisWorkbook.Sheets("EXTBUSPER")
+                lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).Row
+                
+                ' Loop through each row in Sheet12 (EXTBUSPER)
+                For j = 2 To lastRow2
+                    ' Check if the NID in Sheet12 matches the current NID
+                    If ws2.Cells(j, "A").Value = NID Then
+                        ' If form field exists, set the value
+                        If Not AcroForm.getField("EXTBUSPER_CHK") Is Nothing Then
+                            AcroForm.getField("EXTBUSPER_CHK").Value = "Yes"
+                        End If
+                        
+                        ' Exit the loop once the relevant NID has been found and processed
+                        Exit For
+                    End If
+                Next j
+                
+        ' Process data from Sheet3 (INCPARTY)
+        Dim k As Long
+        Set ws3 = ThisWorkbook.Sheets("INCPARTY")
+        lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).Row
+        
+               ' Declare variables
+                Dim INCPARTY1_PARTNAM As String
+                Dim INCPARTY1_PARTNID As String
+                Dim INCPARTY1_BLDGNAM As String
+                Dim INCPARTY1_ROOMNO As String
+                Dim INCPARTY1_FLOORNO As String
+                Dim INCPARTY1_VILLAGE As String
+                Dim INCPARTY1_ADDNO As String
+                Dim INCPARTY1_MOONO As String
+                Dim INCPARTY1_SOINAM As String
+                Dim INCPARTY1_YAEK As String
+                Dim INCPARTY1_THNNAM As String
+                Dim INCPARTY1_TAM_NAME As String
+                Dim INCPARTY1_AMP_NAME As String
+                Dim INCPARTY1_PROV_NAME As String
+                Dim INCPARTY1_POSCOD As String
+                Dim INCPARTY1_TELNO As String
+                
+            For k = 2 To lastRow3
+            
+                ' Check if the NID in ws3 matches the current NID
+                If ws3.Cells(k, "A").Value = NID Then
+            
+            
+                ' If the form field "INCPARTY_CHK" is available, set its value to "Yes"
+                If Not AcroForm.getField("INCPARTY_CHK") Is Nothing Then
+                    AcroForm.getField("INCPARTY_CHK").Value = "Yes"
+                End If
+                
+                ' Assign values from Sheet3 to variables
+                INCPARTY1_PARTNAM = ws3.Cells(k, "D").Value & " " & ws3.Cells(k, "F").Value
+                INCPARTY1_PARTNID = ws3.Cells(k, "C").Value
+                INCPARTY1_BLDGNAM = ws3.Cells(k, "G").Value
+                INCPARTY1_ROOMNO = ws3.Cells(k, "H").Value
+                INCPARTY1_FLOORNO = ws3.Cells(k, "I").Value
+                INCPARTY1_VILLAGE = ws3.Cells(k, "J").Value
+                INCPARTY1_ADDNO = ws3.Cells(k, "K").Value
+                INCPARTY1_MOONO = ws3.Cells(k, "L").Value
+                INCPARTY1_SOINAM = ws3.Cells(k, "M").Value
+                INCPARTY1_YAEK = ws3.Cells(k, "N").Value
+                INCPARTY1_THNNAM = ws3.Cells(k, "O").Value
+                INCPARTY1_TAM_NAME = ws3.Cells(k, "Q").Value
+                INCPARTY1_AMP_NAME = ws3.Cells(k, "S").Value
+                INCPARTY1_PROV_NAME = ws3.Cells(k, "U").Value
+                INCPARTY1_POSCOD = ws3.Cells(k, "V").Value
+                INCPARTY1_TELNO = ws3.Cells(k, "Y").Value
+        
+                ' Fill in the corresponding form fields with the variables
+                If Not IsEmpty(INCPARTY1_PARTNAM) And Not AcroForm.getField("INCPARTY1_PARTNAM") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_PARTNAM").Value = INCPARTY1_PARTNAM
+                End If
+        
+                If Not IsEmpty(INCPARTY1_PARTNID) And Not AcroForm.getField("INCPARTY1_PARTNID") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_PARTNID").Value = INCPARTY1_PARTNID
+                End If
+        
+                If Not IsEmpty(INCPARTY1_BLDGNAM) And Not AcroForm.getField("INCPARTY1_BLDGNAM") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_BLDGNAM").Value = INCPARTY1_BLDGNAM
+                End If
+        
+                If Not IsEmpty(INCPARTY1_ROOMNO) And Not AcroForm.getField("INCPARTY1_ROOMNO") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_ROOMNO").Value = INCPARTY1_ROOMNO
+                End If
+        
+                If Not IsEmpty(INCPARTY1_FLOORNO) And Not AcroForm.getField("INCPARTY1_FLOORNO") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_FLOORNO").Value = INCPARTY1_FLOORNO
+                End If
+        
+                If Not IsEmpty(INCPARTY1_VILLAGE) And Not AcroForm.getField("INCPARTY1_VILLAGE") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_VILLAGE").Value = INCPARTY1_VILLAGE
+                End If
+        
+                If Not IsEmpty(INCPARTY1_ADDNO) And Not AcroForm.getField("INCPARTY1_ADDNO") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_ADDNO").Value = INCPARTY1_ADDNO
+                End If
+        
+                If Not IsEmpty(INCPARTY1_MOONO) And Not AcroForm.getField("INCPARTY1_MOONO") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_MOONO").Value = INCPARTY1_MOONO
+                End If
+        
+                If Not IsEmpty(INCPARTY1_SOINAM) And Not AcroForm.getField("INCPARTY1_SOINAM") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_SOINAM").Value = INCPARTY1_SOINAM
+                End If
+        
+                If Not IsEmpty(INCPARTY1_YAEK) And Not AcroForm.getField("INCPARTY1_YAEK") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_YAEK").Value = INCPARTY1_YAEK
+                End If
+        
+                If Not IsEmpty(INCPARTY1_THNNAM) And Not AcroForm.getField("INCPARTY1_THNNAM") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_THNNAM").Value = INCPARTY1_THNNAM
+                End If
+        
+                If Not IsEmpty(INCPARTY1_TAM_NAME) And Not AcroForm.getField("INCPARTY1_TAM_NAME") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_TAM_NAME").Value = INCPARTY1_TAM_NAME
+                End If
+        
+                If Not IsEmpty(INCPARTY1_AMP_NAME) And Not AcroForm.getField("INCPARTY1_AMP_NAME") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_AMP_NAME").Value = INCPARTY1_AMP_NAME
+                End If
+        
+                If Not IsEmpty(INCPARTY1_PROV_NAME) And Not AcroForm.getField("INCPARTY1_PROV_NAME") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_PROV_NAME").Value = INCPARTY1_PROV_NAME
+                End If
+        
+                If Not IsEmpty(INCPARTY1_POSCOD) And Not AcroForm.getField("INCPARTY1_POSCOD") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_POSCOD").Value = INCPARTY1_POSCOD
+                End If
+        
+                If Not IsEmpty(INCPARTY1_TELNO) And Not AcroForm.getField("INCPARTY1_TELNO") Is Nothing Then
+                    AcroForm.getField("INCPARTY1_TELNO").Value = INCPARTY1_TELNO
+                End If
+        
+                ' Exit the loop once the relevant NID has been found and processed
+                Exit For
+            End If
+        Next k
+             
+            
+            Else
+                MsgBox "Form object not found in the PDF template!"
+            End If
+        End If
+        
+        ' Declare variables for INCPARNUM data
+        Dim INCPARNUM1_PARTNAM As String
+        Dim INCPARNUM1_PARTNID As String
+        Dim INCPARNUM1_CNTAMO As String
+        
+        ' Process data from Sheet12 (EXTBUSPER)
+        For l = 2 To lastRow4
+            ' Check if the NID in ws4 matches the current NID
+            If ws4.Cells(l, "A").Value = NID Then
+                
+                ' Check if the field exists and set the checkbox to "Yes"
+                If Not AcroForm.getField("INCPARNUM_CHK") Is Nothing Then
+                    AcroForm.getField("INCPARNUM_CHK").Value = "Yes"
+                End If
+                
+                ' Assign values from Sheet12 to variables
+                INCPARNUM1_PARTNAM = ws4.Cells(l, "D").Value & " " & ws4.Cells(l, "F").Value
+                INCPARNUM1_PARTNID = ws4.Cells(l, "C").Value
+                INCPARNUM1_CNTAMO = ws4.Cells(l, "G").Value
+                
+                ' Update the form fields if they are not empty and the fields exist
+                If Not IsEmpty(INCPARNUM1_PARTNAM) And Not AcroForm.getField("INCPARNUM1_PARTNAM") Is Nothing Then
+                    AcroForm.getField("INCPARNUM1_PARTNAM").Value = INCPARNUM1_PARTNAM
+                End If
+                
+                If Not IsEmpty(INCPARNUM1_PARTNID) And Not AcroForm.getField("INCPARNUM1_PARTNID") Is Nothing Then
+                    AcroForm.getField("INCPARNUM1_PARTNID").Value = INCPARNUM1_PARTNID
+                End If
+                
+                If Not IsEmpty(INCPARNUM1_CNTAMO) And Not AcroForm.getField("INCPARNUM1_CNTAMO") Is Nothing Then
+                    AcroForm.getField("INCPARNUM1_CNTAMO").Value = INCPARNUM1_CNTAMO
+                End If
+                
+                ' Exit the loop once the relevant NID has been found and processed
+                Exit For
+            End If
+        Next l
+        
+        ' ------------------- Generate PDF Path and Save -------------------
+        Dim OutputPDF As String
+        OutputPDF = GeneratePDFPath(SUPOFFCOD, OFFCOD, NID)
+        AcroPDDoc.Save 1, OutputPDF
+        Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+        AcroAVDoc.Close False
+        AcroApp.Exit
+        pdfCount = pdfCount + 1
+        
+        ' ------------------- Update Log File and Counters -------------------
+        'Print #logFile, "Generated PDF: " & OutputPDF
+        If SUPOFFCOD <> "" Then suPDFCount = suPDFCount + 1
+        If OFFCOD <> "" Then offPDFCount = offPDFCount + 1
+
+        ' Release objects
+        Set AcroForm = Nothing
+        Set AcroPDDoc = Nothing
+        Set AcroAVDoc = Nothing
+        
+NextIteration:
+        On Error GoTo 0 ' Reset error handling
+    Next i
+
+    ' ------------------- Log Summary and Close Resources -------------------
+    'Print #logFile, "Total PDFs generated: " & pdfCount
+    
+    ' Log the number of PDFs generated for each SUPOFFCOD
+    Dim key As Variant
+    For Each key In suPDFCountDict.Keys
+        Print #logFile, "Total PDFs generated for SUPOFFCOD " & key & ": " & suPDFCountDict(key)
+    Next key
+
+    Close #logFile
+    'AcroApp.Exit
+    Set AcroApp = Nothing
+    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    Print #logFile, "Error on row " & i & ": " & Err.Description
+    Resume Next
+End Sub
+' ------------------- Function to Open PDF Document -------------------
+Function OpenPDFDocument(ByRef AcroAVDoc As Object, ByRef AcroPDDoc As Object, ByRef AcroForm As Object, ByVal PDFName As String) As Boolean
+    Dim PDFPath As String
+    PDFPath = ThisWorkbook.Path & "\" & PDFName
+    If AcroAVDoc.Open(PDFPath, "") Then
+        Set AcroPDDoc = AcroAVDoc.GetPDDoc
+        Set AcroForm = AcroPDDoc.GetJSObject
+        OpenPDFDocument = Not AcroForm Is Nothing
+    Else
+        OpenPDFDocument = False
+    End If
+End Function
+
+' ------------------- Function to Generate PDF Path and File Name -------------------
+Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVal NID As String) As String
+    Dim folderPath As String, FileName As String, FileNumber As Integer
+    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+    FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PP091-P-"
+    FileNumber = 1
+    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+        FileNumber = FileNumber + 1
+    Loop
+    GeneratePDFPath = FileName & Format(FileNumber, "0000") & ".pdf"
+End Function
