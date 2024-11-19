@@ -1,14 +1,71 @@
-Sub FillPDFWithMultipleSheet_PT01()
+    ' Constants, Type Declarations
+    Private Const MIN_DISK_SPACE As Long = 100  ' MB required
+    Private Const PDF_TEMPLATE As String = "PT01_PAPER_DRAF.pdf"
+    Private Const MAX_RETRIES As Integer = 3
+    
+    Private Type PDFCounters
+        PrevSUPOFFCOD As String
+        PrevOFFCOD As String
+        SUPOFFNUMBER As Long
+        OFFNUMBER As Long
+    End Type
+    
+    ' Global Variables
+    Private PDFCounters As PDFCounters
+    Private pdfDict As Object
+    Private PrevSUPOFFCOD As String
+    Private PrevOFFCOD As String
+    Private SUPOFFNUMBER As Long
+    Private OFFNUMBER As Long
+    Private NUMBER As String
+    Private NUMBER2 As String
+    ' Initialize Dictionary
+Private Sub InitializeDictionary()
+    If pdfDict Is Nothing Then
+        Set pdfDict = CreateObject("Scripting.Dictionary")
+    End If
+End Sub
+' Update Dictionary
+Private Sub UpdatePDFCounter(ByVal SUPOFFCOD As String)
+    If Not pdfDict.Exists(SUPOFFCOD) Then
+        pdfDict.Add SUPOFFCOD, 0
+    End If
+    pdfDict(SUPOFFCOD) = pdfDict(SUPOFFCOD) + 1
+End Sub
+' Main Process
+Private Sub ProcessRecord(ByRef ws1 As Worksheet, ByRef ws2 As Worksheet, _
+                         ByVal currentRow As Long, ByRef AcroForm As Object)
+    On Error GoTo ErrorHandler
+    
+    ' Get fields data
+    Dim fields As PDFFields
+    GetFieldsFromWorksheet ws1, currentRow, fields
+    
+    ' Update counters
+    UpdatePDFCounter fields.SUPOFFCOD
+    
+    Exit Sub
+    
+ErrorHandler:
+    LogError "ProcessRecord", err.NUMBER, err.Description
+End Sub
+Public Sub FillPDFWithMultipleSheet_PT01()
     ' ------------------- Initialize Acrobat Application -------------------
     Dim AcroApp As Object
+    On Error Resume Next
     Set AcroApp = CreateObject("AcroExch.App")
+    On Error GoTo ErrorHandler
+    If AcroApp Is Nothing Then
+        MsgBox "Error: Acrobat Application could not be initialized. Please ensure Acrobat is installed.", vbCritical
+        Exit Sub
+    End If
     
     ' ------------------- Initialize Log File -------------------
     Dim logFilePath As String, logFile As Integer
-    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFilePath = ThisWorkbook.path & "\PDF_Generation_Log.txt"
     logFile = FreeFile
     Open logFilePath For Append As #logFile
-
+    
     ' ------------------- Initialize Workbook Sheets -------------------
     Dim ws1 As Worksheet, ws2 As Worksheet
     Set ws1 = ThisWorkbook.Sheets("NID_DETAIL")
@@ -20,24 +77,35 @@ Sub FillPDFWithMultipleSheet_PT01()
     lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).row
     
     ' ------------------- Initialize Counters -------------------
-    Dim suPDFCount As Integer, offPDFCount As Integer, pdfCount As Integer
-    suPDFCount = 0
-    offPDFCount = 0
-    pdfCount = 0
-
-    ' ------------------- Initialize Dictionary to track SUPOFFCOD counts -------------------
+    Dim successCount As Long, failureCount As Long
     Dim suPDFCountDict As Object
     Set suPDFCountDict = CreateObject("Scripting.Dictionary")
+    successCount = 0
+    failureCount = 0
     
+    ' Check prerequisites
+    If Not CheckPrerequisites Then Exit Sub
+        
+    ' Optimize Excel settings
+    OptimizeExcelSettings
     ' ------------------- Iterate through NID_DETAIL records -------------------
     Dim i As Long
     For i = 2 To lastRow1
         On Error GoTo ErrorHandler
         
+        Dim currentStatus As String
+        currentStatus = "Success" ' Default status
+        
         ' ------------------- Open PDF and Fill Fields -------------------
         Dim AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
         Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
-        If Not OpenPDFDocument(AcroAVDoc, AcroPDDoc, AcroForm, "PT01_PAPER_DRAF.pdf") Then GoTo NextIteration
+        If Not OpenPDFDocument(AcroAVDoc, AcroPDDoc, AcroForm, "PT01_PAPER_DRAF.pdf") Then
+            currentStatus = "Error: Failed to open PDF template"
+            Debug.Print "Error: Unable to open PDF template for NID " & ws1.Cells(i, "A").Value
+            failureCount = failureCount + 1
+            ws1.Cells(i, "AZ").Value = currentStatus ' Update status in AZ column
+            GoTo NextIteration
+        End If
         
         ' Retrieve data from NID_DETAIL sheet for PDF filling
         Dim NID As String, FIRNAM As String, SUPOFFCOD As String, OFFCOD As String
@@ -49,6 +117,16 @@ Sub FillPDFWithMultipleSheet_PT01()
 
         ' Assign values from worksheet
         NID = ws1.Cells(i, "A").Value
+        If Not AcroForm.getField("NID") Is Nothing Then
+            AcroForm.getField("NID").Value = CStr(NID)
+        Else
+            currentStatus = "Error: 'NID' field missing in PDF"
+            Debug.Print currentStatus
+            failureCount = failureCount + 1
+            ws1.Cells(i, "AZ").Value = currentStatus
+            GoTo NextIteration
+        End If
+        
         NATION = ws1.Cells(i, "B").Value
         FIRNAM = ws1.Cells(i, "C").Value & " " & ws1.Cells(i, "D").Value & " " & ws1.Cells(i, "E").Value & " " & ws1.Cells(i, "F").Value
         BRANUM = ws1.Cells(i, "G").Value
@@ -59,9 +137,6 @@ Sub FillPDFWithMultipleSheet_PT01()
         OFFNAM = ws1.Cells(i, "M").Value
         SUPOFFCOD = ws1.Cells(i, "N").Value
         SUPOFFNAM = ws1.Cells(i, "O").Value
-        
-        'nextHeader = ws1.Cells(i + 1, "K").Value ' Header
-        
         ORGANIZE = ws1.Cells(i, "P").Value
         BRANAM = ws1.Cells(i, "Q").Value & " " & ws1.Cells(i, "R").Value
         BLDGNAM = ws1.Cells(i, "S").Value
@@ -301,17 +376,14 @@ Sub FillPDFWithMultipleSheet_PT01()
         Dim OutputPDF As String
         OutputPDF = GeneratePDFPath(SUPOFFCOD, OFFCOD, NID)
         AcroPDDoc.Save 1, OutputPDF
-        Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
-        AcroAVDoc.Close False
-        AcroApp.Exit
-        pdfCount = pdfCount + 1
+        Debug.Print "PDF saved at: " & OutputPDF
+        Print #logFile, Now & " - Successfully generated PDF for NID: " & NID
         
-        ' ------------------- Update Log File and Counters -------------------
-        'Print #logFile, "Generated PDF: " & OutputPDF
-        If SUPOFFCOD <> "" Then suPDFCount = suPDFCount + 1
-        If OFFCOD <> "" Then offPDFCount = offPDFCount + 1
-
+        successCount = successCount + 1
+        ws1.Cells(i, "AZ").Value = currentStatus ' Update status in AZ column
+        
         ' Release objects
+        AcroAVDoc.Close False
         Set AcroForm = Nothing
         Set AcroPDDoc = Nothing
         Set AcroAVDoc = Nothing
@@ -319,43 +391,52 @@ Sub FillPDFWithMultipleSheet_PT01()
 NextIteration:
         On Error GoTo 0 ' Reset error handling
     Next i
-
-    ' ------------------- Log Summary and Close Resources -------------------
-    'Print #logFile, "Total PDFs generated: " & pdfCount
     
-    ' Log the number of PDFs generated for each SUPOFFCOD
-    Dim key As Variant
-    For Each key In suPDFCountDict.Keys
-        Print #logFile, "Total PDFs generated for SUPOFFCOD " & key & ": " & suPDFCountDict(key)
-    Next key
-
+    ' ------------------- Log Summary and Close Resources -------------------
+    Print #logFile, "Total PDFs generated successfully: " & successCount
+    Print #logFile, "Total PDFs failed: " & failureCount
+    MsgBox "PDF Generation Completed. " & successCount & " successful, " & failureCount & " failed.", vbInformation
+    
     Close #logFile
-    'AcroApp.Exit
-    Set AcroApp = Nothing
-    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+    RestoreExcelSettings
     Exit Sub
-
+    
 ErrorHandler:
-    Print #logFile, "Error on row " & i & ": " & Err.Description
+    currentStatus = "Error: " & err.Description & " Err.Number : " & err.NUMBER
+    Debug.Print currentStatus & " at NID " & ws1.Cells(i, "A").Value
+    ws1.Cells(i, "AZ").Value = currentStatus ' Update status in AZ column
+    failureCount = failureCount + 1
     Resume Next
 End Sub
 ' ------------------- Function to Open PDF Document -------------------
 Function OpenPDFDocument(ByRef AcroAVDoc As Object, ByRef AcroPDDoc As Object, ByRef AcroForm As Object, ByVal PDFName As String) As Boolean
     Dim PDFPath As String
-    PDFPath = ThisWorkbook.Path & "\" & PDFName
+    PDFPath = ThisWorkbook.path & "\" & PDFName
+    
     If AcroAVDoc.Open(PDFPath, "") Then
+        'Debug.Print "PDF opened successfully: " & PDFPath
         Set AcroPDDoc = AcroAVDoc.GetPDDoc
-        Set AcroForm = AcroPDDoc.GetJSObject
-        OpenPDFDocument = Not AcroForm Is Nothing
+        If Not AcroPDDoc Is Nothing Then
+            Set AcroForm = AcroPDDoc.GetJSObject
+            If Not AcroForm Is Nothing Then
+                OpenPDFDocument = True
+                Exit Function
+            Else
+                Debug.Print "Error: AcroForm is Nothing."
+            End If
+        Else
+            Debug.Print "Error: AcroPDDoc is Nothing."
+        End If
     Else
-        OpenPDFDocument = False
+        Debug.Print "Error: Failed to open PDF: " & PDFPath
     End If
+    
+    OpenPDFDocument = False
 End Function
-
 ' ------------------- Function to Generate PDF Path and File Name -------------------
 Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVal NID As String) As String
     Dim folderPath As String, FileName As String, FileNumber As Integer
-    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    folderPath = ThisWorkbook.path & "\GENPDF\"
     If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
     FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PT01-P-"
     FileNumber = 1
@@ -364,3 +445,39 @@ Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVa
     Loop
     GeneratePDFPath = FileName & Format(FileNumber, "0000") & ".pdf"
 End Function
+Private Sub OptimizeExcelSettings()
+    With Application
+        .ScreenUpdating = False
+        .EnableEvents = False
+        .Calculation = xlCalculationManual
+        .DisplayAlerts = False
+    End With
+End Sub
+Private Sub RestoreExcelSettings()
+    With Application
+        .ScreenUpdating = True
+        .EnableEvents = True
+        .Calculation = xlCalculationAutomatic
+        .DisplayAlerts = True
+        .StatusBar = False
+    End With
+End Sub
+Private Function HasSufficientDiskSpace(ByVal path As String, ByVal requiredMB As Double) As Boolean
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    Dim drive As Object
+    Set drive = fso.GetDrive(fso.GetDriveName(path))
+    
+    HasSufficientDiskSpace = (drive.FreeSpace / 1024 / 1024) >= requiredMB
+End Function
+Private Function CheckPrerequisites() As Boolean
+    ' Check disk space
+    If Not HasSufficientDiskSpace(ThisWorkbook.path, MIN_DISK_SPACE) Then
+        MsgBox "Insufficient disk space. Need at least " & MIN_DISK_SPACE & "MB.", vbCritical
+        Exit Function
+    End If
+    
+    CheckPrerequisites = True
+End Function
+

@@ -1,0 +1,316 @@
+Option Explicit
+
+'-------------------- Constants --------------------
+Private Const PDF_TEMPLATE As String = "PT01_PAPER_DRAF.pdf"
+Private Const LOG_FILE_NAME As String = "PDF_Generation_Log.txt"
+Private Const OUTPUT_FOLDER As String = "GENPDF"
+Private Const SUPOFF_CODE_THRESHOLD As String = "04"
+Private Const BATCH_SIZE As Long = 100 ' Process files in batches
+Private Const MIN_DISK_SPACE As Double = 500 ' Minimum disk space in MB
+
+'-------------------- Custom Error Definitions --------------------
+Private Enum CustomErrors
+    ERR_PDF_NOT_FOUND = vbObjectError + 1
+    ERR_INVALID_DATA = vbObjectError + 2
+    ERR_PDF_GENERATION = vbObjectError + 3
+    ERR_INSUFFICIENT_DISK_SPACE = vbObjectError + 4
+    ERR_NO_ACROBAT = vbObjectError + 5
+    ERR_BACKUP_FAILED = vbObjectError + 6
+End Enum
+
+'-------------------- Type Definitions --------------------
+Private Type PDFFormData
+    NID As String
+    NATION As String
+    FIRNAM As String
+    BRANUM As String
+    LTOFLG As Long
+    ENGNAM As String
+    REGISDAT As String
+    OFFCOD As String
+    OFFNAM As String
+    SUPOFFCOD As String
+    SUPOFFNAM As String
+    ORGANIZE As String
+    BRANAM As String
+    Address As AddressType
+    BusinessInfo As BusinessType
+End Type
+
+Private Type AddressType
+    BLDGNAM As String
+    ROOMNO As String
+    FLOORNO As String
+    VILLAGE As String
+    ADDNO As String
+    MOONO As String
+    SOINAM As String
+    YAEK As String
+    THNNAM As String
+    TAM_NAME As String
+    AMP_NAME As String
+    PROV_NAME As String
+    POSCOD As String
+End Type
+
+Private Type BusinessType
+    BUSLOCTYP As String
+    BUSCPTAMO As String
+    ESTMONINCAMO As String
+    SBTTYPCOD(1 To 10) As String
+End Type
+
+'-------------------- Main Procedure --------------------
+Public Sub FillPDFWithMultipleSheet_PT01()
+    Dim AcroApp As Object
+    Dim logFile As Integer
+    Dim ws1 As Worksheet, ws2 As Worksheet
+    Dim startTime As Double
+    
+    startTime = Timer
+    
+    ' Initialize error handling
+    On Error GoTo ErrorHandler
+    
+    ' Check prerequisites
+    If Not CheckPrerequisites Then Exit Sub
+    
+    ' Optimize Excel settings
+    OptimizeExcelSettings
+    
+    ' Initialize Adobe Acrobat
+    Set AcroApp = InitializeAcrobat
+    If AcroApp Is Nothing Then
+        MsgBox "Adobe Acrobat is not installed or cannot be initialized.", vbCritical
+        Exit Sub
+    End If
+    
+    ' Create backup
+    If Not CreateWorkbookBackup Then
+        If MsgBox("Failed to create backup. Continue anyway?", vbQuestion + vbYesNo) = vbNo Then
+            Exit Sub
+        End If
+    End If
+    
+    ' Initialize logging
+    logFile = InitializeLogging(ThisWorkbook.Path & "\" & LOG_FILE_NAME)
+    
+    ' Set worksheet references
+    Set ws1 = ThisWorkbook.Sheets("NID_DETAIL")
+    Set ws2 = ThisWorkbook.Sheets("BRANO_DETAIL")
+    
+    ' Process records in batches
+    Dim result As Boolean
+    result = ProcessRecordsInBatches(ws1, ws2, logFile)
+    
+CleanUp:
+    ' Restore Excel settings and clean up
+    RestoreExcelSettings
+    CleanupResources AcroApp, logFile
+    
+    ' Show summary
+    ShowProcessingSummary Timer - startTime
+    Exit Sub
+
+ErrorHandler:
+    LogError logFile, "Critical error in main procedure: " & Err.Description, Err.Number
+    Resume CleanUp
+End Sub
+
+'-------------------- Helper Functions --------------------
+Private Function CheckPrerequisites() As Boolean
+    ' Check disk space
+    If Not HasSufficientDiskSpace(ThisWorkbook.Path, MIN_DISK_SPACE) Then
+        MsgBox "Insufficient disk space. Need at least " & MIN_DISK_SPACE & "MB.", vbCritical
+        Exit Function
+    End If
+    
+    ' Check template existence
+    If Not FileExists(ThisWorkbook.Path & "\" & PDF_TEMPLATE) Then
+        MsgBox "PDF template not found: " & PDF_TEMPLATE, vbCritical
+        Exit Function
+    End If
+    
+    ' Create output folder if needed
+    Dim outputPath As String
+    outputPath = ThisWorkbook.Path & "\" & OUTPUT_FOLDER
+    If Not FolderExists(outputPath) Then
+        MkDir outputPath
+    End If
+    
+    CheckPrerequisites = True
+End Function
+
+Private Function ProcessRecordsInBatches(ws1 As Worksheet, ws2 As Worksheet, logFile As Integer) As Boolean
+    Dim lastRow1 As Long, lastRow2 As Long
+    Dim startRow As Long, endRow As Long
+    Dim batchCounter As Long
+    Dim success As Boolean
+    
+    lastRow1 = GetLastRow(ws1, "A")
+    lastRow2 = GetLastRow(ws2, "A")
+    
+    ' Initialize progress form
+    Dim progressForm As Object
+    Set progressForm = CreateProgressForm("Processing PDF Files")
+    
+    ' Process in batches
+    For startRow = 2 To lastRow1 Step BATCH_SIZE
+        endRow = WorksheetFunction.Min(startRow + BATCH_SIZE - 1, lastRow1)
+        
+        ' Update progress
+        progressForm.UpdateProgress (startRow - 2) / (lastRow1 - 2) * 100
+        
+        ' Process batch
+        If Not ProcessBatch(ws1, ws2, startRow, endRow, lastRow2, logFile) Then
+            success = False
+            Exit For
+        End If
+        
+        ' Allow system to breathe
+        DoEvents
+        
+        ' Check if user cancelled
+        If progressForm.IsCancelled Then
+            If MsgBox("Cancel processing?", vbQuestion + vbYesNo) = vbYes Then
+                Exit For
+            End If
+        End If
+    Next startRow
+    
+    Unload progressForm
+    ProcessRecordsInBatches = success
+End Function
+
+Private Function ProcessBatch(ws1 As Worksheet, ws2 As Worksheet, _
+                            ByVal startRow As Long, ByVal endRow As Long, _
+                            ByVal lastRow2 As Long, ByVal logFile As Integer) As Boolean
+    Dim i As Long
+    Dim formData As PDFFormData
+    Dim success As Boolean
+    
+    success = True
+    
+    For i = startRow To endRow
+        ' Get and validate form data
+        formData = GetFormData(ws1, i)
+        If Not ValidateFormData(formData) Then
+            LogError logFile, "Invalid data at row " & i, ERR_INVALID_DATA
+            success = False
+            Continue For
+        End If
+        
+        ' Process PDF
+        If Not GeneratePDF(formData, ws2, lastRow2, logFile) Then
+            LogError logFile, "Failed to generate PDF for NID: " & formData.NID, ERR_PDF_GENERATION
+            success = False
+            Continue For
+        End If
+    Next i
+    
+    ProcessBatch = success
+End Function
+
+Private Function GeneratePDF(formData As PDFFormData, ws2 As Worksheet, _
+                           ByVal lastRow2 As Long, ByVal logFile As Integer) As Boolean
+    Dim AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
+    
+    On Error GoTo ErrorHandler
+    
+    ' Open PDF template
+    If Not OpenPDFDocument(AcroAVDoc, AcroPDDoc, AcroForm, PDF_TEMPLATE) Then
+        Exit Function
+    End If
+    
+    ' Fill main form fields
+    FillMainFormFields AcroForm, formData
+    
+    ' Process branch information
+    ProcessBranchInformation AcroForm, formData.NID, ws2, lastRow2
+    
+    ' Save PDF
+    Dim outputPath As String
+    outputPath = GeneratePDFPath(formData.SUPOFFCOD, formData.OFFCOD, formData.NID)
+    AcroPDDoc.Save 1, outputPath
+    
+    ' Log success
+    Print #logFile, Now & " - Successfully generated PDF for NID: " & formData.NID
+    
+    GeneratePDF = True
+    
+CleanUp:
+    ' Clean up objects
+    Set AcroForm = Nothing
+    Set AcroPDDoc = Nothing
+    Set AcroAVDoc = Nothing
+    Exit Function
+    
+ErrorHandler:
+    LogError logFile, "Error generating PDF for NID " & formData.NID & ": " & Err.Description, Err.Number
+    Resume CleanUp
+End Function
+
+'-------------------- Utility Functions --------------------
+Private Function GetFormData(ws As Worksheet, ByVal row As Long) As PDFFormData
+    With GetFormData
+        .NID = ws.Cells(row, "A").Value
+        .NATION = ws.Cells(row, "B").Value
+        .FIRNAM = ConcatenateNames(ws, row, "C", "D", "E", "F")
+
+        ' ... Fill other fields
+    End With
+End Function
+
+Private Function ValidateFormData(formData As PDFFormData) As Boolean
+    ' Implement validation rules
+    If Len(Trim(formData.NID)) = 0 Then Exit Function
+    If Len(Trim(formData.FIRNAM)) = 0 Then Exit Function
+    ' ... Add other validation rules
+    
+    ValidateFormData = True
+End Function
+
+Private Sub OptimizeExcelSettings()
+    With Application
+        .ScreenUpdating = False
+        .EnableEvents = False
+        .Calculation = xlCalculationManual
+        .DisplayAlerts = False
+    End With
+End Sub
+
+Private Sub RestoreExcelSettings()
+    With Application
+        .ScreenUpdating = True
+        .EnableEvents = True
+        .Calculation = xlCalculationAutomatic
+        .DisplayAlerts = True
+        .StatusBar = False
+    End With
+End Sub
+
+Private Function HasSufficientDiskSpace(ByVal path As String, ByVal requiredMB As Double) As Boolean
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    Dim drive As Object
+    Set drive = fso.GetDrive(fso.GetDriveName(path))
+    
+    HasSufficientDiskSpace = (drive.FreeSpace / 1024 / 1024) >= requiredMB
+End Function
+
+Private Function CreateWorkbookBackup() As Boolean
+    On Error GoTo ErrorHandler
+    
+    Dim backupPath As String
+    backupPath = ThisWorkbook.Path & "\Backup_" & Format(Now, "yyyymmdd_hhmmss") & ".xlsm"
+    
+    ThisWorkbook.SaveCopyAs backupPath
+    CreateWorkbookBackup = True
+    Exit Function
+    
+ErrorHandler:
+    CreateWorkbookBackup = False
+End Function
+
+'-------------------- Additional utility functions can be added as needed --------------------
