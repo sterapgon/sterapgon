@@ -76,7 +76,7 @@ Sub CopySingleInstanceToGOTOPT09()
     MsgBox "Single instances of duplicate values have been copied to GOTO PT09 and logged in debuglog_COUNT_SPARE_COPY.", vbInformation
 End Sub
 
-Sub CopySingleInstanceToGOTOPT09_BY_CASE()
+Sub CopySingleInstanceToGOTOPT09_BY_CASE() 'ก๊อบข้อมูลจากชีท SPARE โดยค้นหาจาก TITCOD 
     Dim wsSource As Worksheet
     Dim wsTarget As Worksheet
     Dim lastRow As Long
@@ -182,6 +182,7 @@ Sub ClearNullValues()
     ' Notify the user
     MsgBox "All '(null)' values have been cleared from the workbook.", vbInformation
 End Sub
+
 Sub ResetAllSheetColorsAndResizeCells()
     Dim ws As Worksheet
     
@@ -203,7 +204,8 @@ Sub ResetAllSheetColorsAndResizeCells()
     ' Notify the user
     MsgBox "All cell colors have been reset and cell sizes adjusted to 15 in every sheet.", vbInformation
 End Sub
-Sub CountUniqueValuesInSpare()
+
+Sub CountUniqueValuesInSpare() 'นับข้อมูลในชีท SPARE และแสดงผลลัพธ์ผ่าน log
     Dim ws As Worksheet
     Dim lastRow As Long
     Dim dict As Object
