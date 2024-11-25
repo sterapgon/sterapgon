@@ -1,0 +1,1034 @@
+Sub SearchAndRandomCopy()
+    ' Turn off screen updating and automatic calculations for better performance
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayStatusBar = True
+    
+    On Error GoTo ErrorHandler
+    
+    Dim wsCurrent As Worksheet, wsOffcid As Worksheet
+    Dim wbOffcid As Workbook
+    Dim currentValue As String
+    Dim searchRange As Range, foundRange As Range
+    Dim matchCells As Collection
+    Dim randomRow As Range
+    Dim rowIndex As Long, totalRows As Long
+    Dim firstAddress As String
+    Dim roomPrefix As String, floorPrefix As String, addPrefix As String
+    Dim roomSuffix As String, addSuffix As String
+    
+    ' Set the current workbook and worksheet
+    Set wsCurrent = ThisWorkbook.Sheets("Sheet2")
+    
+    ' Count total rows to process for progress tracking
+    totalRows = WorksheetFunction.CountA(wsCurrent.Range("A:A")) - 1
+    
+    ' Show initial status
+    Application.StatusBar = "Initializing... Opening data file"
+    
+    ' Open the external workbook
+    Set wbOffcid = Workbooks.Open(ThisWorkbook.Path & "\OFFCOD+BRA.xlsx")
+    Set wsOffcid = wbOffcid.Sheets("OFFCID")
+    
+    ' Set the search range in the external workbook
+    Set searchRange = wsOffcid.Range("C:C")
+    
+    ' Initialize rowIndex to start from row 2
+    rowIndex = 2
+    
+    Application.StatusBar = "Processing data..."
+    
+    ' Loop through each row
+    Do While wsCurrent.Cells(rowIndex, "A").Value <> ""
+        ' Update progress every 100 rows
+        If rowIndex Mod 100 = 0 Then
+            Application.StatusBar = "Processing: " & Format((rowIndex - 2) / totalRows, "0.0%") & _
+                                  " (" & (rowIndex - 2) & " of " & totalRows & " rows)"
+        End If
+        
+        ' Check the first two digits
+        If Val(Left(wsCurrent.Cells(rowIndex, "A").Value, 2)) >= 4 Then
+            currentValue = Left(wsCurrent.Cells(rowIndex, "A").Value, 6)
+        Else
+            currentValue = Left(wsCurrent.Cells(rowIndex, "A").Value, 5)
+        End If
+        
+        ' Find all cells in column C that match
+        Set foundRange = searchRange.Find(What:=currentValue, LookIn:=xlValues, _
+                                       LookAt:=xlPart, MatchCase:=False)
+        
+        Set matchCells = New Collection
+        If Not foundRange Is Nothing Then
+            firstAddress = foundRange.Address
+            Do
+                matchCells.Add foundRange
+                Set foundRange = searchRange.FindNext(foundRange)
+            Loop While Not foundRange Is Nothing And foundRange.Address <> firstAddress
+        End If
+        
+        ' Process matching cells
+        If matchCells.count > 0 Then
+            Set randomRow = matchCells(Int((matchCells.count) * Rnd) + 1)
+            
+            ' Copy columns A and C from the external sheet to columns C and D in the current sheet
+            wsCurrent.Cells(rowIndex, "C").Value = wsOffcid.Cells(randomRow.Row, "A").Value
+            wsCurrent.Cells(rowIndex, "D").Value = wsOffcid.Cells(randomRow.Row, "C").Value
+            
+            ' Copy columns E to T from the external sheet to columns E to R in the current sheet
+            wsCurrent.Range(wsCurrent.Cells(rowIndex, "E"), wsCurrent.Cells(rowIndex, "R")).Value = _
+                wsOffcid.Range(wsOffcid.Cells(randomRow.Row, "E"), wsOffcid.Cells(randomRow.Row, "T")).Value
+
+            ' Copy columns S and T from the external sheet to columns S and T in the current sheet
+            wsCurrent.Cells(rowIndex, "S").Value = wsOffcid.Cells(randomRow.Row, "S").Value
+            wsCurrent.Cells(rowIndex, "T").Value = wsOffcid.Cells(randomRow.Row, "T").Value
+
+            ' Check if Cell "E" has a value and is not "-"
+            If wsCurrent.Cells(rowIndex, "E").Value <> "" And wsCurrent.Cells(rowIndex, "E").Value <> "-" Then
+                ' Generate ROOMNO (F), FLOORNO (G), and ADDNO (I) based on conditions
+                roomPrefix = Left(wsCurrent.Cells(rowIndex, "N").Value, 3)
+                roomSuffix = CStr(Application.WorksheetFunction.RandBetween(1, 9))
+                wsCurrent.Cells(rowIndex, "F").Value = roomPrefix & roomSuffix
+
+                floorPrefix = Left(wsCurrent.Cells(rowIndex, "F").Value, 2)
+                wsCurrent.Cells(rowIndex, "G").Value = floorPrefix
+            End If
+
+            ' Generate ADDNO (I)
+            addPrefix = Right(wsCurrent.Cells(rowIndex, "N").Value, 3)
+            addSuffix = Format(Application.WorksheetFunction.RandBetween(1, 99), "00")
+            wsCurrent.Cells(rowIndex, "I").Value = addPrefix & "/" & addSuffix
+        End If
+        
+        ' Move to the next row in the current sheet
+        rowIndex = rowIndex + 1
+    Loop
+    
+    ' Close external workbook
+    Application.StatusBar = "Closing data file..."
+    wbOffcid.Close SaveChanges:=False
+    
+    ' Restore Excel settings
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    
+    MsgBox "Process completed! Total processed rows: " & (rowIndex - 2), vbInformation
+    Exit Sub
+
+ErrorHandler:
+    ' Error handling
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.StatusBar = False
+    
+    If Not wbOffcid Is Nothing Then
+        wbOffcid.Close SaveChanges:=False
+    End If
+    
+    MsgBox "Error occurred: " & Err.Description & vbNewLine & _
+           "Line: " & Erl & vbNewLine & _
+           "Error code: " & Err.Number, vbCritical
+End Sub
+'-------------------------------------------------------------------------------
+    Sub CopyDataAndCheckEmptyCells()
+        ' Performance settings
+        Application.ScreenUpdating = False
+        Application.Calculation = xlCalculationManual
+        Application.EnableEvents = False
+        Application.DisplayStatusBar = True
+        
+        On Error GoTo ErrorHandler
+        
+        Debug.Print "Start processing at: " & Now()
+        Dim startTime As Double
+        startTime = Timer
+        
+        Dim wsSource As Worksheet
+        Dim wsDest As Worksheet
+        Dim lastRow As Long
+        Dim processedCount As Long
+        
+        ' Set worksheets
+        Set wsSource = ThisWorkbook.Sheets("Sheet2")
+        Set wsDest = ThisWorkbook.Sheets("TDTEPT01")
+        
+        ' Find last row
+        lastRow = wsSource.Cells(wsSource.Rows.count, "A").End(xlUp).Row
+        Debug.Print "Total rows to process: " & (lastRow - 1)
+        
+        ' Column mappings
+        Dim sourceColumns As Variant
+        Dim destColumns As Variant
+        sourceColumns = Array("B", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "R", "T")
+        destColumns = Array("M", "N", "C", "B", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "AA")
+        
+        ' Process in batches
+        Const BATCH_SIZE As Long = 5000
+        Dim currentBatch As Long
+        Dim startRow As Long
+        Dim endRow As Long
+        Dim totalBatches As Long
+        
+        totalBatches = Application.WorksheetFunction.RoundUp((lastRow - 1) / BATCH_SIZE, 0)
+        
+        For currentBatch = 0 To totalBatches - 1
+            startRow = 2 + (currentBatch * BATCH_SIZE)
+            endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRow)
+            
+            Debug.Print "Processing batch " & (currentBatch + 1) & " of " & totalBatches & _
+                       " (Rows " & startRow & " to " & endRow & ")"
+            
+            ' Read source data for current batch
+            Dim batchData() As Variant
+            ReDim batchData(1 To endRow - startRow + 1, 1 To UBound(sourceColumns) + 1)
+            
+            Dim rowIndex As Long, colIndex As Long
+            For colIndex = 0 To UBound(sourceColumns)
+                Dim colData As Variant
+                colData = wsSource.Range(sourceColumns(colIndex) & startRow & ":" & _
+                                       sourceColumns(colIndex) & endRow).Value
+                
+                For rowIndex = 1 To UBound(colData)
+                    batchData(rowIndex, colIndex + 1) = colData(rowIndex, 1)
+                Next rowIndex
+            Next colIndex
+            
+            ' Write data to destination
+            Application.StatusBar = "Writing batch " & (currentBatch + 1) & "..."
+            
+            ' Write mapped columns
+            For colIndex = 0 To UBound(destColumns)
+                Dim destRange As Range
+                Set destRange = wsDest.Range(destColumns(colIndex) & startRow & ":" & _
+                                           destColumns(colIndex) & endRow)
+                
+                Dim destValues() As Variant
+                ReDim destValues(1 To endRow - startRow + 1, 1 To 1)
+                
+                For rowIndex = 1 To UBound(batchData)
+                    destValues(rowIndex, 1) = batchData(rowIndex, colIndex + 1)
+                Next rowIndex
+                
+                destRange.Value = destValues
+            Next colIndex
+            
+            ' Fill empty cells with "(null)" and handle special cases
+            Dim nullRange As Range
+            Set nullRange = wsDest.Range("O" & startRow & ":AB" & endRow)
+            
+            With nullRange
+                .Replace What:="", Replacement:="(null)", LookAt:=xlWhole
+            End With
+            
+            ' Replace "(null)" with "-" in columns P and Q
+            With wsDest.Range("P" & startRow & ":Q" & endRow)
+                .Replace What:="(null)", Replacement:="-", LookAt:=xlWhole
+            End With
+            
+            ' Update progress
+            processedCount = processedCount + (endRow - startRow + 1)
+            Application.StatusBar = "Processed " & processedCount & " of " & (lastRow - 1) & " rows (" & _
+                                  Format(processedCount / (lastRow - 1), "0.0%") & ")"
+            
+            ' Memory management
+            DoEvents
+            Debug.Print "Completed batch " & (currentBatch + 1) & " at " & Now()
+        Next currentBatch
+        
+        ' Cleanup and restore settings
+        Application.StatusBar = False
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Application.EnableEvents = True
+        
+        ' Calculate duration
+        Dim duration As String
+        duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+        
+        Debug.Print String(50, "-")
+        Debug.Print "Process completed at: " & Now()
+        Debug.Print "Total time: " & duration
+        Debug.Print "Total rows processed: " & processedCount
+        
+        MsgBox "Process completed!" & vbNewLine & _
+               "Total rows: " & processedCount & vbNewLine & _
+               "Time taken: " & duration, vbInformation
+               
+        Exit Sub
+    
+    ErrorHandler:
+        Debug.Print "Error occurred at " & Now()
+        Debug.Print "Error description: " & Err.Description
+        Debug.Print "Error line: " & Erl
+        Debug.Print "Current batch: " & currentBatch
+        Debug.Print "Current row: " & rowIndex
+        
+        Application.ScreenUpdating = True
+        Application.Calculation = xlCalculationAutomatic
+        Application.EnableEvents = True
+        Application.StatusBar = False
+        
+        MsgBox "Error: " & Err.Description & vbNewLine & _
+               "See immediate window for details", vbCritical
+    End Sub
+'-------------------------------------------------------------------------------    
+   Sub GenerateSequentialNumbers() ' GEN DLNSEQ
+    ' Performance settings
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayStatusBar = True
+    Application.EnableEvents = False
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Start processing at: " & Now()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim startRow As Long
+    Dim endRow As Long
+    Dim rowIndex As Long
+    Dim iValue As Long
+    Dim jValue As Long
+    Dim startTime As Double
+    
+    startTime = Timer
+    Set ws = ThisWorkbook.Sheets("TDTEPT01")
+    
+    ' Find last row
+    lastRow = ws.Cells(ws.Rows.count, "M").End(xlUp).Row
+    Debug.Print "Total rows to process: " & (lastRow - 1)
+    
+    ' Initialize values
+    iValue = 1
+    jValue = 0
+    
+    ' Constants for better readability
+    Const BATCH_SIZE As Long = 10000  ' Increased batch size
+    Const I_MAX As Long = 9999
+    
+    ' Calculate total batches
+    Dim totalBatches As Long
+    totalBatches = Application.WorksheetFunction.RoundUp((lastRow - 1) / BATCH_SIZE, 0)
+    
+    ' Arrays for batch processing
+    Dim mColValues As Variant   ' Column M values
+    Dim batchValues() As Variant ' Combined I and J values
+    Dim nonEmptyCount As Long   ' Count of non-empty cells
+    
+    ' Process in batches
+    Dim currentBatch As Long
+    For currentBatch = 1 To totalBatches
+        ' Calculate batch range
+        startRow = ((currentBatch - 1) * BATCH_SIZE) + 2
+        endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRow)
+        
+        Debug.Print "Processing batch " & currentBatch & " of " & totalBatches & _
+                   " (Rows " & startRow & " to " & endRow & ")"
+        
+        ' Read column M values
+        mColValues = ws.Range("M" & startRow & ":M" & endRow).Value
+        
+        ' Count non-empty cells in this batch
+        nonEmptyCount = 0
+        For rowIndex = 1 To UBound(mColValues, 1)
+            If Not IsEmpty(mColValues(rowIndex, 1)) Then
+                nonEmptyCount = nonEmptyCount + 1
+            End If
+        Next rowIndex
+        
+        ' Create batch array if we have data to process
+        If nonEmptyCount > 0 Then
+            ReDim batchValues(1 To nonEmptyCount, 1 To 2) ' Column 1 for I, Column 2 for J
+            
+            ' Fill batch array
+            Dim batchIndex As Long: batchIndex = 1
+            
+            For rowIndex = 1 To UBound(mColValues, 1)
+                If Not IsEmpty(mColValues(rowIndex, 1)) Then
+                    ' Store formatted values
+                    batchValues(batchIndex, 1) = Format(iValue, "0000")
+                    batchValues(batchIndex, 2) = Format(jValue, "00")
+                    
+                    ' Update sequence
+                    iValue = iValue + 1
+                    If iValue > I_MAX Then
+                        iValue = 1
+                        jValue = jValue + 1
+                    End If
+                    
+                    batchIndex = batchIndex + 1
+                End If
+                
+                ' Progress update
+                If rowIndex Mod 1000 = 0 Then
+                    Application.StatusBar = "Batch " & currentBatch & "/" & totalBatches & _
+                                         " - " & Format(((startRow + rowIndex - 2) / lastRow) * 100, "0.0") & "%"
+                    DoEvents
+                End If
+            Next rowIndex
+            
+            ' Write values efficiently
+            If nonEmptyCount > 0 Then
+                Dim writeStartRow As Long: writeStartRow = startRow
+                Dim currentRow As Long
+                
+                ' Write in smaller chunks for better memory management
+                Const WRITE_CHUNK_SIZE As Long = 1000
+                Dim chunkStart As Long
+                
+                For chunkStart = 1 To nonEmptyCount Step WRITE_CHUNK_SIZE
+                    Dim chunkEnd As Long
+                    chunkEnd = Application.Min(chunkStart + WRITE_CHUNK_SIZE - 1, nonEmptyCount)
+                    
+                    ' Extract chunk values
+                    Dim iChunk() As String
+                    Dim jChunk() As String
+                    ReDim iChunk(1 To chunkEnd - chunkStart + 1)
+                    ReDim jChunk(1 To chunkEnd - chunkStart + 1)
+                    
+                    Dim k As Long
+                    For k = 1 To chunkEnd - chunkStart + 1
+                        iChunk(k) = batchValues(chunkStart + k - 1, 1)
+                        jChunk(k) = batchValues(chunkStart + k - 1, 2)
+                    Next k
+                    
+                    ' Write chunks
+                    ws.Range("I" & (writeStartRow)).Resize(UBound(iChunk)).Value = Application.Transpose(iChunk)
+                    ws.Range("J" & (writeStartRow)).Resize(UBound(jChunk)).Value = Application.Transpose(jChunk)
+                    
+                    writeStartRow = writeStartRow + UBound(iChunk)
+                Next chunkStart
+            End If
+        End If
+        
+        ' Clear arrays
+        Erase mColValues
+        Erase batchValues
+        
+        ' Force garbage collection
+        DoEvents
+        Application.Calculate
+    Next currentBatch
+    
+    ' Completion message
+    Dim duration As String
+    duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & duration
+    
+    ' Restore settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    MsgBox "Sequential numbering complete." & vbNewLine & _
+           "Total rows processed: " & (lastRow - 1) & vbNewLine & _
+           "Time taken: " & duration, vbInformation
+           
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error occurred at " & Now()
+    Debug.Print "Error description: " & Err.Description
+    Debug.Print "Error line: " & Erl
+    Debug.Print "Current batch: " & currentBatch & "/" & totalBatches
+    
+    ' Restore settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    MsgBox "Error occurred: " & Err.Description & vbNewLine & _
+           "See immediate window for details", vbCritical
+End Sub
+'-------------------------------------------------------------------------------
+Sub GenerateUID()
+    ' Turn off screen updating and automatic calculations for better performance
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayStatusBar = True
+    Application.EnableEvents = False
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Start UID Generation at: " & Now()
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim rowIndex As Long
+    Dim uidValue As String
+    Dim yearValue As String
+    Dim monthValue As String
+    Dim dayValue As String
+    Dim startTime As Double
+    
+    startTime = Timer
+    
+    ' Set the worksheet to "TDTEPT01"
+    Set ws = ThisWorkbook.Sheets("TDTEPT01")
+    
+    ' Find the last row based on column "B"
+    lastRow = ws.Cells(ws.Rows.count, "B").End(xlUp).Row
+    Debug.Print "Total rows to process: " & (lastRow - 1)
+    
+    ' Loop through each row starting from row 2 to last row
+    For rowIndex = 2 To lastRow
+        ' Show progress every 1000 rows
+        If rowIndex Mod 1000 = 0 Then
+            Application.StatusBar = "Processing row " & rowIndex & " of " & lastRow & _
+                                  " (" & Format((rowIndex / lastRow) * 100, "0.0") & "%)"
+            Debug.Print "Processed " & rowIndex & " rows..."
+            DoEvents
+        End If
+        
+        ' Extract year, month, and day from column F
+        If Len(ws.Cells(rowIndex, "F").Value) >= 10 Then
+            ' Get the year, add 543
+            yearValue = CStr(CInt(Left(ws.Cells(rowIndex, "F").Value, 4)) + 543)
+            ' Get the month (6-7)
+            monthValue = Mid(ws.Cells(rowIndex, "F").Value, 6, 2)
+            ' Get the day (9-10)
+            dayValue = Mid(ws.Cells(rowIndex, "F").Value, 9, 2)
+            ' Combine year, month, and day into the desired format
+            yearValue = yearValue & monthValue & dayValue  ' Create year in the format "25570107"
+        Else
+            yearValue = ""  ' If the format is incorrect, set to empty
+            Debug.Print "Warning: Invalid date format at row " & rowIndex
+        End If
+        
+        ' Concatenate the values from columns B, formatted year, D, E, I, and J to form the UID
+        uidValue = ws.Cells(rowIndex, "B").Value & _
+                   yearValue & _
+                   ws.Cells(rowIndex, "D").Value & _
+                   ws.Cells(rowIndex, "E").Value & _
+                   ws.Cells(rowIndex, "I").Value & _
+                   ws.Cells(rowIndex, "J").Value
+        
+        ' Place the UID in column "K"
+        ws.Cells(rowIndex, "K").Value = uidValue
+    Next rowIndex
+    
+    ' Calculate execution time
+    Dim executionTime As String
+    executionTime = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & executionTime
+    Debug.Print "Total rows processed: " & (lastRow - 1)
+    
+    ' Restore Excel settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    ' Display a message when the operation is complete
+    MsgBox "UID generation completed." & vbNewLine & _
+           "Total rows: " & (lastRow - 1) & vbNewLine & _
+           "Time taken: " & executionTime, vbInformation
+           
+    Exit Sub
+ 
+ ErrorHandler:
+    Debug.Print "Error occurred at " & Now()
+    Debug.Print "Error description: " & Err.Description
+    Debug.Print "Error line: " & Erl
+    Debug.Print "Current row: " & rowIndex
+    
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    MsgBox "Error: " & Err.Description & vbNewLine & _
+           "See immediate window for details", vbCritical
+ End Sub
+ 
+ '-------------------------------------------------------------------------------
+ Sub CopyDataToTDTEPT01B()
+    ' Performance settings
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.EnableEvents = False
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print "Start processing at: " & Now()
+    Dim startTime As Double
+    startTime = Timer
+    
+    Dim wsSource As Worksheet
+    Dim wsDest As Worksheet
+    Dim wsLookup As Worksheet
+    Dim wsOffcid As Worksheet
+    Dim wbOffcid As Workbook
+    Dim lastRowSource As Long
+    Dim lastRowLookup As Long
+    Dim rowIndex As Long
+    Dim brano As Long
+    Dim destRow As Long
+    Dim lookupValue As String
+    Dim foundCell As Range
+    Dim randomRow As Long
+    Dim lastRowOffcid As Long
+    Dim processedCount As Long
+    
+    ' Cache for lookup values
+    Dim lookupCache As Object
+    Set lookupCache = CreateObject("Scripting.Dictionary")
+    
+    ' Set worksheets
+    Set wsSource = ThisWorkbook.Sheets("TDTEPT01")
+    Set wsDest = ThisWorkbook.Sheets("TDTEPT01B")
+    Set wsLookup = ThisWorkbook.Sheets("Sheet2")
+    
+    Debug.Print "Opening OFFCID workbook..."
+    
+    ' Open OFFCID workbook read-only for better performance
+    Set wbOffcid = Workbooks.Open(ThisWorkbook.Path & "\OFFCOD+BRA.xlsx", ReadOnly:=True)
+    Set wsOffcid = wbOffcid.Sheets("OFFCID")
+    
+    ' Find last rows
+    lastRowSource = wsSource.Cells(wsSource.Rows.count, "A").End(xlUp).Row
+    lastRowOffcid = wsOffcid.Cells(wsOffcid.Rows.count, "E").End(xlUp).Row
+    
+    Debug.Print "Total rows to process: " & (lastRowSource - 1)
+    
+    ' Pre-load lookup data into cache
+    Dim lookupRange As Range
+    Set lookupRange = wsLookup.Range("B2:V" & wsLookup.Cells(wsLookup.Rows.count, "B").End(xlUp).Row)
+    Dim lookupData As Variant
+    lookupData = lookupRange.Value
+    
+    Dim i As Long
+    For i = 1 To UBound(lookupData)
+        If Not lookupCache.Exists(CStr(lookupData(i, 1))) Then
+            lookupCache.Add CStr(lookupData(i, 1)), Array(lookupData(i, 20), lookupData(i, 21))
+        End If
+    Next i
+    
+    Debug.Print "Lookup data cached"
+    
+    ' Initialize destination row
+    destRow = 2
+    processedCount = 0
+    
+    ' Process in smaller batches for better memory management
+    Const BATCH_SIZE As Long = 500
+    Dim currentBatch As Long
+    Dim startRow As Long
+    Dim endRow As Long
+    
+    For currentBatch = 0 To (lastRowSource - 2) \ BATCH_SIZE
+        startRow = 2 + (currentBatch * BATCH_SIZE)
+        endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRowSource)
+        
+        Debug.Print "Processing batch " & (currentBatch + 1) & " (Rows " & startRow & " to " & endRow & ")"
+        
+        For rowIndex = startRow To endRow
+            ' Loop to create 4 copies for each NID
+            For brano = 0 To 1
+                ' Add NID from column M to column A in TDTEPT01B
+                wsDest.Cells(destRow, "A").Value = wsSource.Cells(rowIndex, "M").Value
+                
+                ' Copy data from A to J
+                wsDest.Cells(destRow, "B").Value = wsSource.Cells(rowIndex, "A").Value
+                wsDest.Cells(destRow, "C").Value = wsSource.Cells(rowIndex, "B").Value
+                wsDest.Cells(destRow, "D").Value = wsSource.Cells(rowIndex, "C").Value
+                wsDest.Cells(destRow, "E").Value = wsSource.Cells(rowIndex, "D").Value
+                wsDest.Cells(destRow, "F").Value = wsSource.Cells(rowIndex, "E").Value
+                wsDest.Cells(destRow, "G").Value = wsSource.Cells(rowIndex, "F").Value
+                wsDest.Cells(destRow, "H").Value = wsSource.Cells(rowIndex, "G").Value
+                wsDest.Cells(destRow, "I").Value = wsSource.Cells(rowIndex, "H").Value
+                wsDest.Cells(destRow, "J").Value = wsSource.Cells(rowIndex, "I").Value
+                wsDest.Cells(destRow, "K").Value = wsSource.Cells(rowIndex, "J").Value
+                
+                ' Add brano value to column L
+                wsDest.Cells(destRow, "L").Value = brano
+                
+                ' Get the lookup value and use cache
+                lookupValue = wsDest.Cells(destRow, "A").Value
+                
+                If lookupCache.Exists(CStr(lookupValue)) Then
+                    Dim cacheResult As Variant
+                    cacheResult = lookupCache(CStr(lookupValue))
+                    wsDest.Cells(destRow, "M").Value = cacheResult(0)
+                    wsDest.Cells(destRow, "N").Value = cacheResult(1)
+                End If
+                
+                ' Check if brano = 0 to copy data from O to AB
+                If brano = 0 Then
+                    wsDest.Cells(destRow, "O").Value = wsSource.Cells(rowIndex, "O").Value
+                    wsDest.Cells(destRow, "P").Value = wsSource.Cells(rowIndex, "P").Value
+                    wsDest.Cells(destRow, "Q").Value = wsSource.Cells(rowIndex, "Q").Value
+                    wsDest.Cells(destRow, "R").Value = wsSource.Cells(rowIndex, "R").Value
+                    wsDest.Cells(destRow, "S").Value = wsSource.Cells(rowIndex, "S").Value
+                    wsDest.Cells(destRow, "T").Value = wsSource.Cells(rowIndex, "T").Value
+                    wsDest.Cells(destRow, "U").Value = wsSource.Cells(rowIndex, "U").Value
+                    wsDest.Cells(destRow, "V").Value = wsSource.Cells(rowIndex, "V").Value
+                    wsDest.Cells(destRow, "W").Value = wsSource.Cells(rowIndex, "W").Value
+                    wsDest.Cells(destRow, "X").Value = wsSource.Cells(rowIndex, "X").Value
+                    wsDest.Cells(destRow, "Y").Value = wsSource.Cells(rowIndex, "Y").Value
+                    wsDest.Cells(destRow, "Z").Value = wsSource.Cells(rowIndex, "Z").Value
+                    wsDest.Cells(destRow, "AA").Value = wsSource.Cells(rowIndex, "AA").Value
+                    wsDest.Cells(destRow, "AB").Value = wsSource.Cells(rowIndex, "AB").Value
+                Else
+                    ' If brano <> 0, select a random row from the OFFCID data
+                    Randomize
+                    randomRow = Int((lastRowOffcid - 2 + 1) * Rnd) + 2
+                    
+                    ' Copy data from OFFCID to TDTEPT01B
+                    wsDest.Cells(destRow, "O").Value = wsOffcid.Cells(randomRow, "E").Value
+                    wsDest.Cells(destRow, "P").Value = wsOffcid.Cells(randomRow, "F").Value
+                    wsDest.Cells(destRow, "Q").Value = wsOffcid.Cells(randomRow, "G").Value
+                    wsDest.Cells(destRow, "R").Value = wsOffcid.Cells(randomRow, "H").Value
+                    wsDest.Cells(destRow, "S").Value = wsOffcid.Cells(randomRow, "I").Value
+                    wsDest.Cells(destRow, "T").Value = wsOffcid.Cells(randomRow, "J").Value
+                    wsDest.Cells(destRow, "U").Value = wsOffcid.Cells(randomRow, "K").Value
+                    wsDest.Cells(destRow, "V").Value = wsOffcid.Cells(randomRow, "L").Value
+                    wsDest.Cells(destRow, "W").Value = wsOffcid.Cells(randomRow, "M").Value
+                    wsDest.Cells(destRow, "X").Value = wsOffcid.Cells(randomRow, "N").Value
+                    wsDest.Cells(destRow, "Y").Value = wsOffcid.Cells(randomRow, "P").Value
+                    wsDest.Cells(destRow, "Z").Value = wsOffcid.Cells(randomRow, "R").Value
+                    wsDest.Cells(destRow, "AA").Value = wsOffcid.Cells(randomRow, "T").Value
+                End If
+                
+                ' Append BRANO text
+                If brano > 0 Then
+                    wsDest.Cells(destRow, "N").Value = wsDest.Cells(destRow, "N").Value & " BRANO " & brano
+                End If
+                
+                ' Move to next row
+                destRow = destRow + 1
+                processedCount = processedCount + 1
+            Next brano
+            
+            ' Progress update and memory management
+            If processedCount Mod 100 = 0 Then
+                Debug.Print "Processed " & processedCount & " records..."
+                DoEvents
+                Application.StatusBar = "Processing: " & Format(processedCount / ((lastRowSource - 1) * 4), "0.0%")
+            End If
+        Next rowIndex
+    Next currentBatch
+
+    ' Cleanup
+    wbOffcid.Close SaveChanges:=False
+    Set lookupCache = Nothing
+    
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    MsgBox "Process completed!" & vbNewLine & _
+           "Total records: " & processedCount & vbNewLine & _
+           "Time taken: " & Format((Timer - startTime) / 86400, "hh:mm:ss"), vbInformation
+           
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error: " & Err.Description
+    If Not wbOffcid Is Nothing Then wbOffcid.Close SaveChanges:=False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    Application.StatusBar = False
+    MsgBox "Error: " & Err.Description, vbCritical
+End Sub
+ '-------------------------------------------------------------------------------
+ Sub CheckAndFillData()
+    ' Performance settings
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.EnableEvents = False
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print "Start processing at: " & Now()
+    Dim startTime As Double
+    startTime = Timer
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long, j As Long
+    Dim processedCount As Long
+    
+    ' Set worksheet
+    Set ws = ThisWorkbook.Sheets("TDTEPT01B")
+    
+    ' Find last row
+    lastRow = ws.Cells(ws.Rows.count, "O").End(xlUp).Row
+    Debug.Print "Total rows to process: " & (lastRow - 1)
+    
+    ' Create arrays to store the needed columns
+    Dim colL As Variant
+    Dim colO As Variant
+    Dim colX As Variant
+    
+    ' Read required columns into arrays
+    colL = ws.Range("L2:L" & lastRow).Value
+    colO = ws.Range("O2:O" & lastRow).Value
+    colX = ws.Range("X2:X" & lastRow).Value
+    
+    ' Process in batches
+    Const BATCH_SIZE As Long = 1000
+    Dim currentBatch As Long
+    Dim startRow As Long
+    Dim endRow As Long
+    Dim totalBatches As Long
+    
+    totalBatches = Application.WorksheetFunction.RoundUp((lastRow - 1) / BATCH_SIZE, 0)
+    
+    For currentBatch = 0 To totalBatches - 1
+        startRow = 2 + (currentBatch * BATCH_SIZE)
+        endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRow)
+        
+        Debug.Print "Processing batch " & (currentBatch + 1) & " of " & totalBatches & _
+                   " (Rows " & startRow & " to " & endRow & ")"
+        
+        ' Process each row in the batch
+        For i = startRow To endRow
+            Dim arrayIndex As Long
+            arrayIndex = i - 1
+            
+            ' Check column O
+            If colO(arrayIndex, 1) <> "" And colO(arrayIndex, 1) <> "-" And colO(arrayIndex, 1) <> "(null)" Then
+                ' Extract first 4 digits from X for P
+                ws.Cells(i, "P").Value = Left(CStr(colX(arrayIndex, 1)), 4)
+                
+                ' Random number for Q
+                Randomize
+                ws.Cells(i, "Q").Value = Int((20 - 11 + 1) * Rnd + 11)
+            Else
+                ' Handle empty O
+                If colO(arrayIndex, 1) = "" Then
+                    ws.Cells(i, "O").Value = "(null)"
+                End If
+                ws.Cells(i, "P").Value = "-"
+                ws.Cells(i, "Q").Value = "-"
+            End If
+            
+            ' Process house number (column S)
+            If colL(arrayIndex, 1) <> 9 Then
+                Randomize
+                ws.Cells(i, "S").Value = Right(CStr(colX(arrayIndex, 1)), 3) & "/" & _
+                                        Int((99 - 11 + 1) * Rnd + 11)
+            Else
+                ws.Cells(i, "S").Value = "-"
+            End If
+            
+            ' Process column AF
+            If colO(arrayIndex, 1) <> "" And colO(arrayIndex, 1) <> "(null)" Then
+                ws.Cells(i, "AE").Value = "03"
+            Else
+                ws.Cells(i, "AE").Value = "02"
+            End If
+            
+            ' Fill null values for O to AD
+            For j = 15 To 30 ' O to AD
+                If ws.Cells(i, j).Value = "" Then
+                    ws.Cells(i, j).Value = "(null)"
+                End If
+            Next j
+            
+            ' Progress update
+            processedCount = processedCount + 1
+            If processedCount Mod 1000 = 0 Then
+                Debug.Print "Processed " & processedCount & " of " & (lastRow - 1) & " rows..."
+                Application.StatusBar = "Processing: " & _
+                    Format(processedCount / (lastRow - 1), "0.0%")
+                DoEvents
+            End If
+        Next i
+    Next currentBatch
+    
+    ' Cleanup and restore settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    Dim duration As String
+    duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & duration
+    Debug.Print "Total rows processed: " & processedCount
+    
+    MsgBox "Process completed!" & vbNewLine & _
+           "Total rows: " & processedCount & vbNewLine & _
+           "Time taken: " & duration, vbInformation
+           
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error occurred at " & Now()
+    Debug.Print "Error description: " & Err.Description
+    Debug.Print "Error line: " & Erl
+    Debug.Print "Current batch: " & currentBatch
+    Debug.Print "Current row: " & i
+    
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    Application.StatusBar = False
+    
+    MsgBox "Error: " & Err.Description & vbNewLine & _
+           "See immediate window for details", vbCritical
+End Sub
+ '-------------------------------------------------------------------------------
+ Sub CopyDataFromTDTEPP01ToTDTEPT01C()
+    ' Performance settings
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.EnableEvents = False
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Start processing at: " & Now()
+    
+    Dim startTime As Double
+    startTime = Timer
+    
+    Dim wsSource As Worksheet
+    Dim wsDest As Worksheet
+    Dim lastRow As Long
+    Dim processedCount As Long
+    
+    ' Set source and destination sheets
+    Set wsSource = ThisWorkbook.Sheets("TDTEPT01")
+    Set wsDest = ThisWorkbook.Sheets("TDTEPT01C")
+    
+    ' Find the last row in source
+    lastRow = wsSource.Cells(wsSource.Rows.count, "M").End(xlUp).Row
+    Debug.Print "Total rows to process: " & (lastRow - 1)
+    
+    ' Define source range and get all data at once
+    Dim sourceData As Variant
+    Dim sourceRange As Range
+    
+    ' Create range for required columns (A-J,M)
+    Set sourceRange = Union( _
+        wsSource.Range("M2:M" & lastRow), _
+        wsSource.Range("A2:J" & lastRow) _
+    )
+    
+    ' Read all data at once
+    sourceData = sourceRange.Value
+    
+    ' Process in batches
+    Const BATCH_SIZE As Long = 5000
+    Dim currentBatch As Long
+    Dim startRow As Long
+    Dim endRow As Long
+    Dim totalBatches As Long
+    
+    totalBatches = Application.WorksheetFunction.RoundUp((lastRow - 1) / BATCH_SIZE, 0)
+    
+    Debug.Print "Processing in " & totalBatches & " batches..."
+    
+    ' Create destination arrays for each batch
+    Dim destData() As Variant
+    ReDim destData(1 To BATCH_SIZE, 1 To 11) ' A to K (11 columns)
+    
+    For currentBatch = 0 To totalBatches - 1
+        startRow = (currentBatch * BATCH_SIZE) + 1
+        endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRow - 1)
+        
+        Debug.Print "Processing batch " & (currentBatch + 1) & " of " & totalBatches & _
+                   " (Rows " & startRow & " to " & endRow & ")"
+        
+        ' Prepare batch data
+        Dim batchSize As Long
+        batchSize = endRow - startRow + 1
+        ReDim destData(1 To batchSize, 1 To 11)
+        
+        ' Fill destination array for current batch
+        Dim i As Long, destRow As Long
+        For i = 1 To batchSize
+            ' Calculate source row index
+            destRow = startRow + i - 1
+            
+            ' Copy data to destination array
+            destData(i, 1) = wsSource.Cells(destRow + 1, "M").Value  ' Column A (from M)
+            destData(i, 2) = wsSource.Cells(destRow + 1, "A").Value  ' Column B (from A)
+            destData(i, 3) = wsSource.Cells(destRow + 1, "B").Value  ' Column C (from B)
+            destData(i, 4) = wsSource.Cells(destRow + 1, "C").Value  ' Column D (from C)
+            destData(i, 5) = wsSource.Cells(destRow + 1, "D").Value  ' Column E (from D)
+            destData(i, 6) = wsSource.Cells(destRow + 1, "E").Value  ' Column F (from E)
+            destData(i, 7) = wsSource.Cells(destRow + 1, "F").Value  ' Column G (from F)
+            destData(i, 8) = wsSource.Cells(destRow + 1, "G").Value  ' Column H (from G)
+            destData(i, 9) = wsSource.Cells(destRow + 1, "H").Value  ' Column I (from H)
+            destData(i, 10) = wsSource.Cells(destRow + 1, "I").Value ' Column J (from I)
+            destData(i, 11) = wsSource.Cells(destRow + 1, "J").Value ' Column K (from J)
+            
+            ' Update progress
+            processedCount = processedCount + 1
+            If processedCount Mod 1000 = 0 Then
+                Application.StatusBar = "Processing: " & Format(processedCount / (lastRow - 1), "0.0%")
+                DoEvents
+            End If
+        Next i
+        
+        ' Write batch to destination
+        Debug.Print "Writing batch " & (currentBatch + 1) & " to destination..."
+        wsDest.Range("A" & (startRow + 1)).Resize(batchSize, 11).Value = destData
+        
+        ' Force garbage collection
+        DoEvents
+    Next currentBatch
+    
+    ' Cleanup and restore settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    ' Calculate duration
+    Dim duration As String
+    duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & duration
+    Debug.Print "Total rows processed: " & processedCount
+    Debug.Print String(50, "-")
+    
+    MsgBox "Process completed!" & vbNewLine & _
+           "Total rows: " & processedCount & vbNewLine & _
+           "Time taken: " & duration, vbInformation
+           
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error occurred at " & Now()
+    Debug.Print "Error description: " & Err.Description
+    Debug.Print "Error line: " & Erl
+    Debug.Print "Current batch: " & currentBatch
+    Debug.Print "Current row: " & i
+    
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    Application.StatusBar = False
+    
+    MsgBox "Error: " & Err.Description & vbNewLine & _
+           "See immediate window for details", vbCritical
+End Sub
+
+
+
+
+     
