@@ -1,0 +1,231 @@
+Option Explicit
+
+' Constants
+Private Const PDF_TEMPLATE As String = "PT04.pdf"
+Private Const GENPDF_FOLDER As String = "GENPDF"
+Private Const SPARE_FOLDER As String = "spare"
+Private Const MAX_FILES_PER_FOLDER As Integer = 10
+
+' Main Sub
+Sub FillPDFWithMultipleSheets()
+    ' PDF Objects
+    Dim AcroApp As Object, AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
+    
+    ' Worksheet Variables
+    Dim ws1 As Worksheet
+    Dim lastRow1 As Long
+    Dim i As Long
+    
+    ' Counter Variables
+    Dim pdfCount As Integer
+    Dim SUPOFFNUMBER As Long, OFFNUMBER As Long
+    Dim PrevSUPOFFCOD As String, PrevOFFCOD As String
+    
+    ' Data Variables
+    Dim formData As FormData
+    
+    ' Logging
+    Dim objStream As Object
+    
+    ' Initialize Variables
+    InitializeVariables SUPOFFNUMBER, OFFNUMBER, PrevSUPOFFCOD, PrevOFFCOD, pdfCount
+    
+    ' Setup Logging
+    Set objStream = SetupLogging()
+    If objStream Is Nothing Then Exit Sub
+    
+    ' Get Worksheet
+    If Not SetupWorksheet(ws1, lastRow1, "GENPT04") Then
+        LogMessage objStream, "ERROR", "Failed to setup worksheet"
+        Exit Sub
+    End If
+    
+    ' Initialize Adobe
+    Set AcroApp = InitializeAcrobat()
+    If AcroApp Is Nothing Then
+        LogMessage objStream, "ERROR", "Failed to initialize Acrobat"
+        Exit Sub
+    End If
+    
+    ' Process Records
+    For i = 2 To lastRow1
+        On Error GoTo ErrorHandler
+        
+        ' Get Data
+        GetFormData ws1, i, formData
+        LogMessage objStream, "INFO", "Processing NID: " & formData.NID
+        
+        ' Process PDF
+        If ProcessPDFRecord(AcroApp, formData, pdfCount, objStream) Then
+            pdfCount = pdfCount + 1
+            LogMessage objStream, "SUCCESS", "Created PDF for NID: " & formData.NID
+        End If
+     
+    
+NextIteration:
+        On Error GoTo 0
+    Next i
+    
+    ' Cleanup
+    CleanupObjects AcroApp, objStream
+    MsgBox "PDFs filled successfully"
+    Exit Sub
+    
+ErrorHandler:
+    LogMessage objStream, "ERROR", "Error on row " & i & ": " & Err.Description
+    Resume NextIteration
+End Sub
+
+' Types
+Private Type FormData
+    NID As String
+    TITNAM As String
+    FIRNAM As String
+    MIDNAM As String
+    LASNAM As String
+    BRA_TITNAM As String
+    BRANAM As String
+    SUPOFFNAM As String
+    OFFNAM As String
+    BLDGNAM As String
+    ROOMNO As String
+    FLOORNO As String
+    VILLAGE As String
+    ADDNO As String
+    MOONO As String
+    SOINAM As String
+    YAEK As String
+    THNNAM As String
+    TAM_NAME As String
+    AMP_NAME As String
+    PROV_NAME As String
+    POSCOD As String
+    TELNO As String
+    EMAIL As String
+    WEBSITE As String
+    SUPOFFCOD As String
+    OFFCOD As String
+    LICBRANO As String
+End Type
+
+' Helper Functions
+Private Function SetupLogging() As Object
+    On Error Resume Next
+    Set SetupLogging = CreateObject("ADODB.Stream")
+    With SetupLogging
+        .Type = 2  ' Text
+        .Charset = "utf-8"
+        .Open
+    End With
+End Function
+
+Private Function SetupWorksheet(ByRef ws As Worksheet, ByRef lastRow As Long, ByVal sheetName As String) As Boolean
+    On Error Resume Next
+    Set ws = ThisWorkbook.Sheets(sheetName)
+    If Not ws Is Nothing Then
+        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+        SetupWorksheet = True
+    End If
+End Function
+
+Private Function InitializeAcrobat() As Object
+    On Error Resume Next
+    Set InitializeAcrobat = CreateObject("AcroExch.App")
+End Function
+
+Private Sub InitializeVariables(ByRef SUPOFFNUMBER As Long, ByRef OFFNUMBER As Long, _
+                              ByRef PrevSUPOFFCOD As String, ByRef PrevOFFCOD As String, _
+                              ByRef pdfCount As Integer)
+    SUPOFFNUMBER = 0
+    OFFNUMBER = 0
+    PrevSUPOFFCOD = ""
+    PrevOFFCOD = ""
+    pdfCount = 0
+End Sub
+
+Private Sub GetFormData(ByRef ws As Worksheet, ByVal row As Long, ByRef data As FormData)
+    With ws
+        data.NID = .Cells(row, "B").Value
+        data.TITNAM = .Cells(row, "E").Value
+        data.FIRNAM = .Cells(row, "G").Value
+        ' ต่อด้วยการดึงข้อมูลอื่นๆ ตามต้องการ
+    End With
+    
+    ' แปลงค่าว่างเป็น "-"
+    data.ROOMNO = SafeGetValue(data.ROOMNO)
+    data.FLOORNO = SafeGetValue(data.FLOORNO)
+End Sub
+
+Private Function ProcessPDFRecord(ByRef AcroApp As Object, ByRef data As FormData, _
+                                ByVal pdfCount As Integer, ByRef objStream As Object) As Boolean
+    Dim AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
+    
+    ' Open PDF
+    If Not OpenPDFFile(AcroApp, AcroAVDoc, AcroPDDoc, AcroForm) Then
+        LogMessage objStream, "ERROR", "Failed to open PDF for NID: " & data.NID
+        Exit Function
+    End If
+    
+    ' Fill PDF Fields
+    If Not FillPDFFields(AcroForm, data) Then
+        LogMessage objStream, "ERROR", "Failed to fill PDF fields for NID: " & data.NID
+        GoTo Cleanup
+    End If
+    
+    ' Save PDF
+    Dim OutputPDF As String
+    OutputPDF = GeneratePDFPath(data.SUPOFFCOD, data.OFFCOD, data.NID, pdfCount)
+    
+    If SavePDFFile(AcroPDDoc, OutputPDF) Then
+        ProcessPDFRecord = True
+        LogMessage objStream, "INFO", "PDF saved at: " & OutputPDF
+    End If
+    
+Cleanup:
+    CleanupPDFObjects AcroAVDoc, AcroPDDoc, AcroForm
+End Function
+
+Private Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, _
+                               ByVal NID As String, ByVal pdfCount As Integer) As String
+    Dim baseCode As String
+    baseCode = IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD)
+    
+    Dim folderPath As String
+    folderPath = GetFolderPath(baseCode, pdfCount >= MAX_FILES_PER_FOLDER)
+    
+    Dim fileName As String
+    fileName = baseCode & "-PT04-P-" & Format(GetNextFileNumber(folderPath, baseCode), "0000")
+    
+    GeneratePDFPath = folderPath & fileName & ".pdf"
+End Function
+
+Private Function SavePDFFile(ByRef PDDoc As Object, ByVal path As String) As Boolean
+    On Error Resume Next
+    PDDoc.Save 1, path
+    SavePDFFile = (Err.Number = 0)
+End Function
+
+Private Sub CleanupObjects(ByRef AcroApp As Object, ByRef objStream As Object)
+    On Error Resume Next
+    If Not AcroApp Is Nothing Then
+        AcroApp.Exit
+        Set AcroApp = Nothing
+    End If
+    
+    If Not objStream Is Nothing Then
+        objStream.Close
+        Set objStream = Nothing
+    End If
+End Sub
+
+Private Sub LogMessage(ByRef stream As Object, ByVal messageType As String, ByVal message As String)
+    Dim logText As String
+    logText = Format(Now, "yyyy-mm-dd hh:mm:ss") & " [" & messageType & "] " & message
+    
+    stream.WriteText logText & vbCrLf
+    Debug.Print logText
+End Sub
+
+Private Function SafeGetValue(ByVal value As String, Optional ByVal defaultValue As String = "-") As String
+    SafeGetValue = IIf(Trim(value) = "", defaultValue, value)
+End Function

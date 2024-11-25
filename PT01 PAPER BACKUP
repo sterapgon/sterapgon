@@ -1,3 +1,10 @@
+' Constants for Memory Management
+Private Const MEMORY_THRESHOLD As Long = 300  ' MB
+Private Const GC_INTERVAL As Long = 50       ' ??????????????? force GC
+
+' ??????????????????????? Memory
+Private LastMemoryCheck As Date
+
 Sub FillPDFWithMultipleSheet_PT01()
     ' ------------------- Initialize Acrobat Application -------------------
     Dim AcroApp As Object
@@ -5,7 +12,7 @@ Sub FillPDFWithMultipleSheet_PT01()
     
     ' ------------------- Initialize Log File -------------------
     Dim logFilePath As String, logFile As Integer
-    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFilePath = ThisWorkbook.path & "\PDF_Generation_Log.txt"
     logFile = FreeFile
     Open logFilePath For Append As #logFile
 
@@ -30,9 +37,19 @@ Sub FillPDFWithMultipleSheet_PT01()
     Set suPDFCountDict = CreateObject("Scripting.Dictionary")
     
     ' ------------------- Iterate through NID_DETAIL records -------------------
+    LastMemoryCheck = Now
     Dim i As Long
     For i = 2 To lastRow1
         On Error GoTo ErrorHandler
+
+        If i Mod GC_INTERVAL = 0 Then
+            If NeedsMemoryCleanup() Then
+                ForceGarbageCollection
+                LastMemoryCheck = Now
+                Debug.Print "Memory cleanup at record: " & i & ", Memory usage: " & _
+                          Format(GetCurrentMemoryUsage(), "#,##0.00") & " MB"
+            End If
+        End If
         
         ' ------------------- Open PDF and Fill Fields -------------------
         Dim AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
@@ -315,6 +332,11 @@ Sub FillPDFWithMultipleSheet_PT01()
         Set AcroForm = Nothing
         Set AcroPDDoc = Nothing
         Set AcroAVDoc = Nothing
+
+        If i Mod GC_INTERVAL = 0 Then
+            Print #logFile, Now & " - Memory usage: " & _
+                          Format(GetCurrentMemoryUsage(), "#,##0.00") & " MB"
+        End If
         
 NextIteration:
         On Error GoTo 0 ' Reset error handling
@@ -336,13 +358,52 @@ NextIteration:
     Exit Sub
 
 ErrorHandler:
-    Print #logFile, "Error on row " & i & ": " & Err.Description
+    Print #logFile, "Error on row " & i & ": " & err.Description
     Resume Next
+
+    ' ???? Exit Sub ???????
+        ForceGarbageCollection
+        Application.ActiveSheet.UsedRange
 End Sub
+' ------------------- Function GetCurrentMemoryUsage -------------------
+    Private Function GetCurrentMemoryUsage() As Double
+        On Error Resume Next
+        Dim proc As Object
+        Set proc = GetObject("winmgmts:\\.\root\cimv2"). _
+                   ExecQuery("Select * from Win32_Process Where ProcessID = " & Application.Hwnd)
+                   
+        Dim p As Object
+        For Each p In proc
+            GetCurrentMemoryUsage = p.WorkingSetSize / 1024 / 1024
+            Exit Function
+        Next
+        
+        GetCurrentMemoryUsage = 0
+    End Function
+    
+    Private Sub ForceGarbageCollection()
+        On Error Resume Next
+        
+        ' Force Excel to clean up
+        Application.MemoryFree
+        DoEvents
+        
+        ' Clear clipboard
+        Application.CutCopyMode = False
+        
+        ' Clear used range
+        Application.ActiveSheet.UsedRange
+    End Sub
+    
+    Private Function NeedsMemoryCleanup() As Boolean
+        ' ????????????? Memory ??? 5 ???? ?????????????????????
+        NeedsMemoryCleanup = (GetCurrentMemoryUsage() > MEMORY_THRESHOLD) Or _
+                             (DateDiff("s", LastMemoryCheck, Now) > 300)
+    End Function
 ' ------------------- Function to Open PDF Document -------------------
 Function OpenPDFDocument(ByRef AcroAVDoc As Object, ByRef AcroPDDoc As Object, ByRef AcroForm As Object, ByVal PDFName As String) As Boolean
     Dim PDFPath As String
-    PDFPath = ThisWorkbook.Path & "\" & PDFName
+    PDFPath = ThisWorkbook.path & "\" & PDFName
     If AcroAVDoc.Open(PDFPath, "") Then
         Set AcroPDDoc = AcroAVDoc.GetPDDoc
         Set AcroForm = AcroPDDoc.GetJSObject
@@ -351,11 +412,10 @@ Function OpenPDFDocument(ByRef AcroAVDoc As Object, ByRef AcroPDDoc As Object, B
         OpenPDFDocument = False
     End If
 End Function
-
 ' ------------------- Function to Generate PDF Path and File Name -------------------
 Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVal NID As String) As String
     Dim folderPath As String, FileName As String, FileNumber As Integer
-    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    folderPath = ThisWorkbook.path & "\GENPDF\"
     If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
     FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PT01-P-"
     FileNumber = 1
@@ -364,3 +424,5 @@ Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVa
     Loop
     GeneratePDFPath = FileName & Format(FileNumber, "0000") & ".pdf"
 End Function
+
+
