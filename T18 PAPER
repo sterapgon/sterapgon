@@ -1,0 +1,595 @@
+Sub FillPD_T18()
+    On Error GoTo ErrorHandler
+    
+    ' Performance settings
+    Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
+    Application.DisplayStatusBar = True
+    Application.EnableEvents = False
+    
+    ' Debug logging
+    Debug.Print String(50, "-")
+    Debug.Print "Start PDF Generation at: " & Now()
+    Dim startTime As Double
+    startTime = Timer
+
+    ' Main objects
+    Dim AcroApp As Object
+    Dim AcroAVDoc As Object
+    Dim AcroPDDoc As Object
+    Dim AcroForm As Object
+    Dim ws1 As Worksheet
+    Dim lastRow1 As Long
+    Dim i As Long
+    
+ '----------------------------------------------------------------------------------------------
+    ' Variables for data from Sheet1
+    Dim NID As String
+    Dim BRANO As String
+    Dim FINAME As String
+    Dim BRANAM As String
+    Dim ADDNO As String
+    Dim MOONO As String
+    Dim THNNAM As String
+    Dim TAMCOD As String
+    Dim AMCOD As String
+    Dim PROVNAM As String
+    Dim POSCOD As String
+    Dim NUM_1 As String
+    Dim DATE_1 As String
+    Dim MOUNT_1 As String
+    Dim NUMBER_OF_MOUNT As String
+    Dim Buddhist_1 As String
+    Dim MOUNT_2 As String
+    Dim Buddhist_2 As String
+    Dim DATE_ACTION As String
+    Dim DATE_ACTION_1 As String
+    Dim SECTION As String
+    Dim TEAM As String
+    Dim fill_61 As String
+    Dim undefined_35 As String
+    Dim documents As String
+    Dim Tax_refund As String
+   
+    Dim fill_31_202 As String
+    Dim fill_31_203 As String
+    Dim fill_31_204 As String
+    Dim fill_31_207 As String
+    Dim fill_31_208 As String
+    Dim fill_31_209 As String
+    Dim fill_31_212 As String
+    Dim fill_31_213 As String
+    Dim fill_31_214 As String
+    Dim fill_31_217 As String
+    Dim fill_31_218 As String
+    Dim fill_31_219 As String
+    Dim fill_31_222 As String
+    Dim fill_31_223 As String
+    Dim fill_31_224 As String
+    Dim fill_31_227 As String
+    Dim fill_31_228 As String
+    Dim fill_31_229 As String
+    Dim fill_31_232 As String
+    Dim fill_31_233 As String
+    Dim fill_31_234 As String
+    Dim fill_31_237 As String
+    Dim fill_31_238 As String
+    Dim fill_31_239 As String
+    Dim fill_31_242 As String
+    Dim fill_31_243 As String
+    Dim fill_31_244 As String
+    Dim fill_31_247 As String
+    Dim fill_31_248 As String
+    Dim fill_31_249 As String
+    Dim fill_31_2370 As String
+    Dim fill_31_2380 As String
+    Dim fill_31_2390 As String
+    Dim fill_31_2044 As String
+    Dim fill_31_2045 As String
+    Dim fill_31_2046 As String
+    Dim fill_31_2420 As String
+    Dim fill_31_2430 As String
+    Dim fill_31_2440 As String
+    Dim undefined_3520 As String
+    Dim fill_6122 As String
+
+'------------------- CHECK BOX
+
+    Dim toggle_a10 As String
+    Dim toggle_a11 As String
+    Dim ISPCOD As String
+    
+    Dim BOOKNUM As String
+    Dim toggle_a24 As String
+    Dim toggle_a25 As String
+    Dim toggle_a26 As String
+    Dim toggle_a27 As String
+    Dim toggle_a28 As String
+    Dim Update_balance As String
+    Dim assess_the_tax As String
+    
+    ' Counter variables
+    Dim SUPOFFNUMBER As Long
+    Dim PrevSUPOFFCOD As String
+    Dim Number As String
+    Dim pdfCount As Integer
+    pdfCount = 0
+            
+            SUPOFFNUMBER = 0
+            OFFNUMBER = 0
+            PrevSUPOFFCOD = ""
+            PrevOFFCOD = ""
+            
+
+    ' Variables for the PDF file
+    Dim PDFPath As String
+    Dim OutputPDF As String
+    
+    ' Log file path
+    Dim logFile As String
+    logFile = ThisWorkbook.Path & "\logfile.txt"
+    
+    ' Create a Stream Object for writing the log file
+    Dim objStream As Object
+    Set objStream = CreateObject("ADODB.Stream")
+    
+    ' Set the properties of the Stream
+    With objStream
+        .Type = 2 ' Set the type to text (Text)
+        .Charset = "utf-8" ' Use UTF-8 encoding to support Thai characters
+        .Open
+    End With
+    
+    pdfCount = 0 ' Initialize to 0
+  
+    Set ws1 = ThisWorkbook.Sheets("Sheet1")
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "B").End(xlUp).Row
+
+    ' Initialize Acrobat
+  On Error Resume Next
+    Set AcroApp = CreateObject("AcroExch.App")
+    If Err.Number <> 0 Then
+        MsgBox "Failed to open Adobe Acrobat: " & Err.Description, vbCritical
+        GoTo CleanUp
+    End If
+    On Error GoTo ErrorHandler
+    
+    ' Set worksheet
+    Set ws1 = ThisWorkbook.Sheets("Sheet1")
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "B").End(xlUp).Row
+    
+    ' Check template exists
+    PDFPath = ThisWorkbook.Path & "\PDFT18.pdf"
+    If Dir(PDFPath) = "" Then
+        MsgBox "PDF template not found: " & PDFPath, vbCritical
+        GoTo CleanUp
+    End If
+    
+    ' Create output folder
+    Dim FolderPath As String
+    FolderPath = ThisWorkbook.Path & "\GENPDF\"
+    If Dir(FolderPath, vbDirectory) = "" Then
+        MkDir FolderPath
+    End If
+'----------------------------------------------------------------------------------------------
+    For i = 3 To lastRow1
+    On Error Resume Next
+        Application.StatusBar = "Processing row " & i & " of " & lastRow1
+        ' Retrieve data from Sheet1
+
+        NID = ws1.Cells(i, "B").Value
+        BRANO = Format(ws1.Cells(i, "G").Value, "0000")
+        FINAME = ws1.Cells(i, "E").Value & " " & ws1.Cells(i, "F").Value
+        BRANAM = ws1.Cells(i, "K").Value & " " & ws1.Cells(i, "L").Value
+        ADDNO = ws1.Cells(i, "W").Value
+        MOONO = ws1.Cells(i, "X").Value
+        THNNAM = ws1.Cells(i, "AA").Value
+        TAMCOD = ws1.Cells(i, "AB").Value
+        AMPCOD = ws1.Cells(i, "AC").Value
+        PROVNAM = ws1.Cells(i, "AD").Value
+        POSCOD = ws1.Cells(i, "AE").Value
+        NUM_1 = ws1.Cells(i, "AM").Value
+        DATE_1 = ws1.Cells(i, "AN").Value
+        MOUNT_1 = ws1.Cells(i, "AO").Value
+        Buddhist_1 = ws1.Cells(i, "AP").Value
+        NUMBER_OF_MOUNT = ws1.Cells(i, "AQ").Value
+        MOUNT_2 = ws1.Cells(i, "AR").Value
+        Buddhist_2 = ws1.Cells(i, "AS").Value
+        DATE_ACTION = ws1.Cells(i, "AT").Value
+        DATE_ACTION_1 = ws1.Cells(i, "AU").Value
+        SECTION = ws1.Cells(i, "AV").Value
+        TEAM = ws1.Cells(i, "AW").Value
+        fill_61 = ws1.Cells(i, "AX").Value
+        documents = ws1.Cells(i, "AG").Value
+        fill_6122 = ws1.Cells(i, "AY").Value
+         
+        fill_31_202 = ws1.Cells(i, "BA").Value
+        fill_31_203 = ws1.Cells(i, "BB").Value
+        fill_31_204 = ws1.Cells(i, "BC").Value
+        fill_31_207 = ws1.Cells(i, "BD").Value
+        fill_31_208 = ws1.Cells(i, "BE").Value
+        fill_31_209 = ws1.Cells(i, "BF").Value
+        fill_31_212 = ws1.Cells(i, "BG").Value
+        fill_31_213 = ws1.Cells(i, "BH").Value
+        fill_31_214 = ws1.Cells(i, "BI").Value
+        fill_31_217 = ws1.Cells(i, "BJ").Value
+        fill_31_218 = ws1.Cells(i, "BK").Value
+        fill_31_219 = ws1.Cells(i, "BL").Value
+        fill_31_222 = ws1.Cells(i, "BM").Value
+        fill_31_223 = ws1.Cells(i, "BN").Value
+        fill_31_224 = ws1.Cells(i, "BO").Value
+        fill_31_227 = ws1.Cells(i, "BP").Value
+        fill_31_228 = ws1.Cells(i, "BQ").Value
+        fill_31_229 = ws1.Cells(i, "BR").Value
+        fill_31_232 = ws1.Cells(i, "BS").Value
+        fill_31_233 = ws1.Cells(i, "BT").Value
+        fill_31_234 = ws1.Cells(i, "BU").Value
+        fill_31_237 = ws1.Cells(i, "BV").Value
+        fill_31_238 = ws1.Cells(i, "BW").Value
+        fill_31_239 = ws1.Cells(i, "BX").Value
+        fill_31_242 = ws1.Cells(i, "BY").Value
+        fill_31_243 = ws1.Cells(i, "BZ").Value
+        fill_31_244 = ws1.Cells(i, "CA").Value
+        fill_31_247 = ws1.Cells(i, "CB").Value
+        fill_31_248 = ws1.Cells(i, "CC").Value
+        fill_31_249 = ws1.Cells(i, "CD").Value
+        fill_31_2370 = ws1.Cells(i, "CE").Value
+        fill_31_2380 = ws1.Cells(i, "CF").Value
+        fill_31_2390 = ws1.Cells(i, "CG").Value
+        fill_31_2044 = ws1.Cells(i, "CH").Value
+        fill_31_2045 = ws1.Cells(i, "CI").Value
+        fill_31_2046 = ws1.Cells(i, "CJ").Value
+        fill_31_2420 = ws1.Cells(i, "CK").Value
+        fill_31_2430 = ws1.Cells(i, "CL").Value
+        fill_31_2440 = ws1.Cells(i, "CM").Value
+        undefined_3520 = ws1.Cells(i, "CT").Value
+        
+        Dim SUPOFFCOD As String
+        SUPOFFCOD = ws1.Cells(i, "O").Value
+                 
+     
+           toggle_a10 = ws1.Cells(i, "AI").Value
+           toggle_a11 = ws1.Cells(i, "AJ").Value
+           ISPCOD = ws1.Cells(i, "AK").Value
+           BOOKNUM = ws1.Cells(i, "AL").Value
+           SECTION_1 = ws1.Cells(i, "AH").Value
+           Test_Results = ws1.Cells(i, "CN").Value
+           Update_balance = ws1.Cells(i, "CP").Value
+           assess_the_tax = ws1.Cells(i, "CQ").Value
+           Tax_refund = ws1.Cells(i, "CR").Value
+           Test_results_1 = ws1.Cells(i, "CO").Value
+           Tax_refund_1 = ws1.Cells(i, "CS").Value
+           VAT_1 = ws1.Cells(i, "AZ").Value
+         
+'----------------------------------------------------------------------------------------------
+
+        ' Open PDF template
+        On Error Resume Next
+        Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+        
+        If Not AcroAVDoc.Open(PDFPath, "") Then
+            Debug.Print "Failed to open PDF at row: " & i
+            GoTo NextIteration
+        End If
+        
+        Set AcroPDDoc = AcroAVDoc.GetPDDoc
+        Set AcroForm = AcroPDDoc.GetJSObject
+        
+
+                 If SUPOFFCOD <> PrevSUPOFFCOD Then
+                        ' Reset SUPOFFNUMBER if the code has changed
+                        SUPOFFNUMBER = 0
+                    End If
+            
+                    ' Increment SUPOFFNUMBER and format it
+                    SUPOFFNUMBER = SUPOFFNUMBER + 1
+                    Number = Format(SUPOFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    On Error Resume Next
+                    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-T18-P-" & Number
+                    If Err.Number <> 0 Then
+                        Debug.Print "Error setting HEADER at row: " & i
+                        Err.Clear
+                    End If
+                    On Error GoTo ErrorHandler
+                    ' Store the current SUPOFFCOD as the previous one for the next iteration
+                    PrevSUPOFFCOD = SUPOFFCOD
+'----------------------------------------------------------------------------------------------
+
+        ' Fill PDF fields from Sheet1 data
+        On Error Resume Next
+        With AcroForm
+            .getField("NID").Value = NID
+            .getField("BRANO").Value = BRANO
+            .getField("FINAME").Value = FINAME
+            .getField("BRANAM").Value = BRANAM
+            .getField("ADDNO").Value = ADDNO
+            .getField("MOONO").Value = MOONO
+            .getField("THNNAM").Value = THNNAM
+            .getField("TAMCOD").Value = TAMCOD
+            .getField("AMCOD").Value = AMPCOD
+            .getField("PROVNAM").Value = PROVNAM
+            .getField("POSCOD").Value = POSCOD
+            .getField("NUM_1").Value = NUM_1
+            .getField("DATE_1").Value = DATE_1
+            .getField("MOUNT_1").Value = MOUNT_1
+            .getField("DATE_1").Value = DATE_1
+            .getField("Buddhist_1").Value = Buddhist_1
+            .getField("NUMBER_OF_MOUNT").Value = NUMBER_OF_MOUNT
+            .getField("MOUNT_2").Value = MOUNT_2
+            .getField("Buddhist_2").Value = Buddhist_2
+            .getField("DATE_ACTION").Value = DATE_ACTION
+            .getField("DATE_ACTION_1").Value = DATE_ACTION_1
+            .getField("SECTION").Value = SECTION
+            .getField("TEAM").Value = TEAM
+            .getField("fill_61").Value = fill_61
+            .getField("undefined_35").Value = undefined_35
+            .getField("documents").Value = documents
+            .getField("Update_balance").Value = Update_balance
+            .getField("assess_the_tax").Value = assess_the_tax
+            .getField("Tax_refund").Value = Tax_refund
+            .getField("fill_31_202").Value = fill_31_202
+            .getField("fill_31_203").Value = fill_31_203
+            .getField("fill_31_204").Value = fill_31_204
+            .getField("fill_31_207").Value = fill_31_207
+            .getField("fill_31_208").Value = fill_31_208
+            .getField("fill_31_208").Value = fill_31_208
+            .getField("fill_31_209").Value = fill_31_209
+            .getField("fill_31_212").Value = fill_31_212
+            .getField("fill_31_213").Value = fill_31_213
+            .getField("fill_31_214").Value = fill_31_214
+            .getField("fill_31_217").Value = fill_31_217
+            .getField("fill_31_218").Value = fill_31_218
+            .getField("fill_31_219").Value = fill_31_219
+            .getField("fill_31_222").Value = fill_31_222
+            .getField("fill_31_223").Value = fill_31_223
+            .getField("fill_31_224").Value = fill_31_224
+            .getField("fill_31_227").Value = fill_31_227
+            .getField("fill_31_228").Value = fill_31_228
+            .getField("fill_31_229").Value = fill_31_229
+            .getField("fill_31_232").Value = fill_31_232
+            .getField("fill_31_233").Value = fill_31_233
+            .getField("fill_31_234").Value = fill_31_234
+            .getField("fill_31_237").Value = fill_31_237
+            .getField("fill_31_238").Value = fill_31_238
+            .getField("fill_31_239").Value = fill_31_239
+            .getField("fill_31_242").Value = fill_31_242
+            .getField("fill_31_243").Value = fill_31_243
+            .getField("fill_31_244").Value = fill_31_244
+            .getField("fill_31_247").Value = fill_31_247
+            .getField("fill_31_248").Value = fill_31_248
+            .getField("fill_31_249").Value = fill_31_249
+            .getField("fill_31_2044").Value = fill_31_2044
+            .getField("fill_31_2045").Value = fill_31_2045
+            .getField("fill_31_2046").Value = fill_31_2046
+            .getField("fill_31_242").Value = fill_31_242
+            .getField("fill_31_243").Value = fill_31_243
+            .getField("fill_31_244").Value = fill_31_244
+            .getField("undefined_3520").Value = undefined_3520
+            .getField("fill_6122").Value = fill_6122
+        
+         End With
+'----------------------------------------------------------------------------------------------
+
+ 'toggle_a10
+                Select Case toggle_a10
+                Case "1"
+                    AcroForm.getField("toggle_a10").Value = "Yes"
+                                                         
+         End Select
+
+'----------------------------------------------------------------------------------------------
+
+'toggle_a11
+                Select Case toggle_a11
+                Case "1"
+                    AcroForm.getField("toggle_a11").Value = "Yes"
+                                                         
+         End Select
+
+'----------------------------------------------------------------------------------------------
+
+'ISPCOD
+
+                Select Case ISPCOD
+                Case "1"
+                    AcroForm.getField("toggle_a23").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_a24").Value = "Yes"
+                   
+                Case "3"
+                    AcroForm.getField("toggle_a25").Value = "Yes"
+
+                Case "4"
+                    AcroForm.getField("toggle_a26").Value = "Yes"
+                    
+                Case "5"
+                    AcroForm.getField("toggle_a27").Value = "Yes"
+                    
+                Case "6"
+                    AcroForm.getField("toggle_a28").Value = "Yes"
+                           
+                                           
+         End Select
+'----------------------------------------------------------------------------------------------
+
+
+'BOOKNUM
+
+              Select Case BOOKNUM
+                Case "1"
+                    AcroForm.getField("toggle_a29").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_a30").Value = "Yes"
+                    
+          End Select
+'----------------------------------------------------------------------------------------------
+
+'SECTION_1
+
+
+             Select Case SECTION_1
+                Case "1"
+                    AcroForm.getField("toggle_a34").Value = "Yes"
+                    
+             End Select
+                    
+'----------------------------------------------------------------------------------------------
+'Test_Results
+
+            
+                Select Case Test_Results
+                Case "1"
+                    AcroForm.getField("toggle_500").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_501").Value = "Yes"
+                   
+                Case "3"
+                    AcroForm.getField("toggle_502").Value = "Yes"
+
+                Case "4"
+                    AcroForm.getField("toggle_503").Value = "Yes"
+                    
+                 End Select
+                    
+                    
+'----------------------------------------------------------------------------------------------
+
+'Test_results_1
+
+                  Select Case Test_results_1
+                Case "1"
+                    AcroForm.getField("toggle_600").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_601").Value = "Yes"
+
+                    End Select
+                    
+'----------------------------------------------------------------------------------------------
+'Tax_refund_1
+
+                Select Case Tax_refund_1
+                Case "1"
+                    AcroForm.getField("toggle_3").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_4").Value = "Yes"
+
+                    End Select
+                    
+'----------------------------------------------------------------------------------------------
+'VAT_1
+                Select Case VAT_1
+                Case "1"
+                    AcroForm.getField("toggle_10_2").Value = "Yes"
+                    
+                Case "2"
+                    AcroForm.getField("toggle_11_2").Value = "Yes"
+
+                    End Select
+                    
+'----------------------------------------------------------------------------------------------
+' Save the filled PDF
+        Dim FileNumber As Integer
+        Dim FileName As String
+        
+        ' Create folder path based on supoffcod
+        FolderPath = ThisWorkbook.Path & "\" & "GENPDF2" & "\"
+        
+        ' Check if the folder exists, if not, create it
+        If Dir(FolderPath, vbDirectory) = "" Then
+            MkDir FolderPath
+        End If
+        
+        ' Initialize the output file name without the number
+        FileName = FolderPath & SUPOFFCOD & "-T18-P-"
+        
+        ' Check for existing files and generate a unique name
+        FileNumber = 1
+        Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+            FileNumber = FileNumber + 1
+        Loop
+        
+        ' Construct the final output file name
+        OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+        
+        ' Save the filled PDF
+        Debug.Print "NID : " & NID & " " & "PDF will be saved at: " & OutputPDF
+        
+        On Error Resume Next
+        AcroPDDoc.Save 1, OutputPDF
+        
+        If Err.Number = 0 Then
+            pdfCount = pdfCount + 1
+        Else
+            Debug.Print "Failed to save PDF at row: " & i & ", Error: " & Err.Description
+        End If
+        On Error GoTo ErrorHandler
+        
+        On Error Resume Next
+        AcroAVDoc.Close False
+        
+        ' Increment PDF count
+        pdfCount = pdfCount + 1
+        
+NextIteration:
+        If Not AcroAVDoc Is Nothing Then
+            AcroAVDoc.Close True
+            Set AcroAVDoc = Nothing
+        End If
+        If Not AcroPDDoc Is Nothing Then Set AcroPDDoc = Nothing
+        If Not AcroForm Is Nothing Then Set AcroForm = Nothing
+    Next i
+     Z
+    ' Show completion message with statistics
+    Dim duration As String
+    duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+    MsgBox "PDF Generation Complete" & vbNewLine & _
+           "Total PDFs Generated: " & pdfCount & vbNewLine & _
+           "Time Elapsed: " & duration, vbInformation
+    
+    GoTo CleanUp
+
+ErrorHandler:
+    MsgBox "An error occurred:" & vbNewLine & _
+           "Error " & Err.Number & ": " & Err.Description & vbNewLine & _
+           "At Row: " & i, vbCritical
+    
+CleanUp:
+    ' Restore Excel settings
+    Application.StatusBar = False
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    Application.EnableEvents = True
+    
+    ' Cleanup all objects
+    If Not AcroAVDoc Is Nothing Then AcroAVDoc.Close True
+    If Not AcroPDDoc Is Nothing Then Set AcroPDDoc = Nothing
+    If Not AcroForm Is Nothing Then Set AcroForm = Nothing
+    If Not AcroApp Is Nothing Then
+        AcroApp.Exit
+        Set AcroApp = Nothing
+    End If
+End Sub
+
+' Helper function to safely fill form fields with error handling
+Private Function FillFormField(ByRef AcroForm As Object, ByVal fieldName As String, ByVal fieldValue As String) As Boolean
+    On Error Resume Next
+    AcroForm.getField(fieldName).Value = fieldValue
+    
+    If Err.Number <> 0 Then
+        Debug.Print "Failed to fill field " & fieldName & ": " & Err.Description
+        FillFormField = False
+        Err.Clear
+    Else
+        FillFormField = True
+    End If
+    On Error GoTo 0
+End Function
+

@@ -1,0 +1,144 @@
+Sub ConcatenateAndAddSuffix()
+    ' Ultimate performance settings
+    With Application
+        .ScreenUpdating = False
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .DisplayAlerts = False
+    End With
+    
+    On Error GoTo ErrorHandler
+    
+    Debug.Print "Start processing at: " & Now()
+    Dim startTime As Double
+    startTime = Timer
+    
+    Dim ws As Worksheet
+    Dim lastRow As Long, processedCount As Long
+    Set ws = ThisWorkbook.Sheets("MIX")
+    
+    ' Clear destination columns
+    ws.Range("D:D,F:F").Clear
+    
+    ' Get last row
+    lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+    
+    ' Validate last row
+    If lastRow < 2 Then
+        MsgBox "No data found!", vbExclamation
+        GoTo CleanExit
+    End If
+    
+    Debug.Print "Total rows to process: " & Format(lastRow - 1, "#,##0")
+    
+    ' Process in smaller batches
+    Const BATCH_SIZE As Long = 5000
+    Dim startRow As Long, endRow As Long
+    Dim batch As Long, totalBatches As Long
+    
+    totalBatches = Application.WorksheetFunction.RoundUp((lastRow - 1) / BATCH_SIZE, 0)
+    processedCount = 0
+    
+    For batch = 0 To totalBatches - 1
+        startRow = batch * BATCH_SIZE + 2
+        endRow = Application.Min(startRow + BATCH_SIZE - 1, lastRow)
+        
+        ' Show progress
+        Application.StatusBar = "Batch " & (batch + 1) & " of " & totalBatches & _
+                              " (Rows " & Format(startRow, "#,##0") & " to " & Format(endRow, "#,##0") & ")"
+        Debug.Print "Processing batch " & (batch + 1) & " of " & totalBatches
+        
+        ' Read batch data
+        Dim rngB As Range, rngC As Range, rngE As Range
+        Set rngB = ws.Range("B" & startRow & ":B" & endRow)
+        Set rngC = ws.Range("C" & startRow & ":C" & endRow)
+        Set rngE = ws.Range("E" & startRow & ":E" & endRow)
+        
+        Dim valB As Variant, valC As Variant, valE As Variant
+        valB = rngB.Value
+        valC = rngC.Value
+        valE = rngE.Value
+        
+        ' Create result arrays
+        Dim resD() As String
+        Dim resF() As String
+        ReDim resD(1 To endRow - startRow + 1)
+        ReDim resF(1 To endRow - startRow + 1)
+        
+        ' Process rows in current batch
+        Dim i As Long
+        For i = 1 To UBound(valB)
+            ' Column D
+            If Not IsEmpty(valB(i, 1)) Then
+                resD(i) = CStr(valB(i, 1)) & " " & CStr(valC(i, 1)) & " (TEST)"
+            Else
+                resD(i) = ""
+            End If
+            
+            ' Column F
+            If Not IsEmpty(valB(i, 1)) Then
+                If valE(i, 1) = 0 Then
+                    resF(i) = CStr(valB(i, 1)) & " " & CStr(valC(i, 1)) & " (TEST)"
+                Else
+                    resF(i) = CStr(valB(i, 1)) & " " & CStr(valC(i, 1)) & " " & _
+                             "BRANO " & CStr(valE(i, 1)) & " (TEST)"
+                End If
+            Else
+                resF(i) = ""
+            End If
+        Next i
+        
+        ' Write results for current batch
+        ws.Range("D" & startRow).Resize(UBound(resD)).Value = Application.Transpose(resD)
+        ws.Range("F" & startRow).Resize(UBound(resF)).Value = Application.Transpose(resF)
+        
+        ' Update processed count
+        processedCount = processedCount + (endRow - startRow + 1)
+        
+        ' Allow system to breathe
+        DoEvents
+    Next batch
+    
+    ' Calculate execution time
+    Dim duration As String
+    duration = Format((Timer - startTime) / 86400, "hh:mm:ss")
+    
+CleanExit:
+    ' Restore settings
+    With Application
+        .StatusBar = False
+        .ScreenUpdating = True
+        .Calculation = xlCalculationAutomatic
+        .EnableEvents = True
+        .DisplayAlerts = True
+    End With
+    
+    Debug.Print String(50, "-")
+    Debug.Print "Process completed at: " & Now()
+    Debug.Print "Total time: " & duration
+    Debug.Print "Rows processed: " & Format(processedCount, "#,##0")
+    
+    MsgBox "Process completed!" & vbNewLine & _
+           "Rows processed: " & Format(processedCount, "#,##0") & vbNewLine & _
+           "Time taken: " & duration, vbInformation
+           
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error occurred at batch row " & startRow
+    Debug.Print "Error description: " & Err.Description
+    Debug.Print "Error line: " & Erl
+    
+    With Application
+        .StatusBar = False
+        .ScreenUpdating = True
+        .Calculation = xlCalculationAutomatic
+        .EnableEvents = True
+        .DisplayAlerts = True
+    End With
+    
+    MsgBox "Error occurred!" & vbNewLine & _
+           "Row: " & Format(startRow, "#,##0") & vbNewLine & _
+           "Error: " & Err.Description, vbCritical
+End Sub
+

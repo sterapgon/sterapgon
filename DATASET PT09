@@ -1,135 +1,658 @@
-Sub CountValuesInWorkbook() 'นับจำนวนในไฟล์ที่แยกเป็นข้อๆ มาแล้ว แสดงผลผ่านไฟล์ LOG
-    Dim ws As Worksheet
+Sub SplitDataBasedOnColumnJ()
+    Dim wsSource As Worksheet
+    Dim lastRow As Long, i As Long
+    Dim sheetName As String
+    Dim cellValue As String
+    Dim targetWs As Worksheet
+    Dim dataRange As Range
     Dim wsDict As Object
-    Dim totalDict As Object
-    Dim lastRow As Long
-    Dim cell As Range
-    Dim logFilePath As String
-    Dim logFile As Integer
-    Dim key As Variant
-    Dim grandTotal As Long
-    
-    ' Initialize dictionaries and grand total counter
-    Set totalDict = CreateObject("Scripting.Dictionary")
-    grandTotal = 0
-    
-    ' Define log file path in the same folder as the workbook
-    logFilePath = ThisWorkbook.Path & "\COUNTCHKNID_SPARE.txt"
-    logFile = FreeFile
-    Open logFilePath For Output As #logFile
-    
-    ' Loop through each worksheet in the workbook
-    For Each ws In ThisWorkbook.Sheets
-        ' Skip if sheet name is "NID"
-        If ws.Name <> "NID" Then
-            Set wsDict = CreateObject("Scripting.Dictionary")
-            lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
-            
-            ' Debug log - start processing each sheet
-            Debug.Print "Processing sheet: " & ws.Name
-            
-            ' Loop through each cell in column B of the current sheet
-            For Each cell In ws.Range("B2:B" & lastRow)
-                If Not IsEmpty(cell.Value) Then
-                    ' Update sheet-specific dictionary
-                    If wsDict.exists(cell.Value) Then
-                        wsDict(cell.Value) = wsDict(cell.Value) + 1
-                    Else
-                        wsDict.Add cell.Value, 1
-                    End If
-                    
-                    ' Update total workbook dictionary
-                    If totalDict.exists(cell.Value) Then
-                        totalDict(cell.Value) = totalDict(cell.Value) + 1
-                    Else
-                        totalDict.Add cell.Value, 1
-                    End If
-                    
-                    ' Increment grand total count
-                    grandTotal = grandTotal + 1
-                    
-                    ' Debug log for each cell processed
-                    Debug.Print "Value '" & cell.Value & "' in row " & cell.Row & " of sheet " & ws.Name
-                End If
-            Next cell
-            
-            ' Write per-sheet counts to the log file
-            Print #logFile, "Counts for sheet: " & ws.Name
-            Print #logFile, "-----------------------------"
-            For Each key In wsDict.keys
-                Print #logFile, "Value: " & key & " - Count: " & wsDict(key)
-            Next key
-            Print #logFile, vbCrLf ' Line break between sheets
+
+    ' Set the source worksheet
+    Set wsSource = ThisWorkbook.Sheets("NID")
+    Debug.Print "Source worksheet set to: " & wsSource.Name
+
+    ' Find the last row in column C of the source sheet
+    lastRow = wsSource.Cells(wsSource.Rows.Count, "C").End(xlUp).Row
+    Debug.Print "Last row in column C: " & lastRow
+
+    ' Create a dictionary to track created sheets
+    Set wsDict = CreateObject("Scripting.Dictionary")
+    Debug.Print "Dictionary for tracking sheets initialized."
+
+    ' Loop through the rows in column C starting from row 2
+    For i = 2 To lastRow
+        cellValue = wsSource.Cells(i, "C").Value
+        Debug.Print "Row " & i & " - Cell Value in Column C: " & cellValue
+
+        ' Get the first 5 characters from the value in column C
+        If Len(cellValue) >= 5 Then
+            sheetName = Left(cellValue, 5)
+            Debug.Print "First 5 characters (Sheet Name): " & sheetName
+
+            ' Check if the sheet with this name already exists
+            If Not wsDict.exists(sheetName) Then
+                ' If the sheet doesn't exist, create it
+                Set targetWs = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+                targetWs.Name = sheetName
+                wsDict.Add sheetName, targetWs.Name
+                Debug.Print "Created new sheet: " & targetWs.Name
+
+                ' Copy headers from the source sheet to the new sheet
+                wsSource.Rows(1).Copy targetWs.Rows(1)
+                Debug.Print "Copied headers to sheet: " & targetWs.Name
+            Else
+                Debug.Print "Sheet " & sheetName & " already exists."
+            End If
+
+            ' Get the sheet where the data should be copied
+            Set targetWs = ThisWorkbook.Sheets(wsDict(sheetName))
+
+            ' Copy the entire row to the target sheet
+            Dim targetRow As Long
+            targetRow = targetWs.Cells(targetWs.Rows.Count, "A").End(xlUp).Row + 1
+            wsSource.Rows(i).Copy targetWs.Rows(targetRow)
+            Debug.Print "Copied row " & i & " to sheet " & targetWs.Name & " at row " & targetRow
+        Else
+            Debug.Print "Row " & i & " - Cell Value in Column C is less than 5 characters; skipping."
         End If
-    Next ws
-    
-    ' Write total workbook counts to the log file
-    Print #logFile, "Total Counts Across Workbook"
-    Print #logFile, "-----------------------------"
-    For Each key In totalDict.keys
-        Print #logFile, "Value: " & key & " - Total Count: " & totalDict(key)
-        Debug.Print "Value: " & key & " - Total Count: " & totalDict(key)
-    Next key
-    
-    ' Write the grand total to the log file
-    Print #logFile, vbCrLf & "Grand Total of All Values: " & grandTotal
-    Debug.Print "Grand Total of All Values: " & grandTotal
-    
-    ' Close the log file
-    Close #logFile
-    
-    ' Debug log - finished processing all sheets
-    Debug.Print "Finished processing all sheets. Log file created at: " & logFilePath
-    
-    ' Notify the user
-    MsgBox "Counting completed. Check the log file at: " & logFilePath, vbInformation
+    Next i
+
+    MsgBox "Data has been split based on column J."
+    Debug.Print "Data split operation completed."
 End Sub
 
-    Sub ClearNullValues() ' ค้นหาคำว่า (null) แล้วลบออกทั้ง workbook
+    Sub ColorRandomRowsBasedOnCountAllSheets()
         Dim ws As Worksheet
-        Dim cell As Range
         Dim lastRow As Long
-        Dim lastCol As Long
+        Dim i As Long
+        Dim groupSize As Long
+        Dim randomRow As Long
+        Dim randomRows() As Long
+        Dim groupCount As Long
+        Dim rng As Range
         
         ' Loop through each worksheet in the workbook
         For Each ws In ThisWorkbook.Sheets
-            ' Find the last row and last column with data
-            lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
-            lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+            ' Count the total number of rows with data in column A for each sheet
+            lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
             
-            ' Loop through each cell in the used range of the sheet
-            For Each cell In ws.Range(ws.Cells(1, 1), ws.Cells(lastRow, lastCol))
-                If cell.Value = "(null)" Then
-                    cell.ClearContents
-                    ' Debug log - indicate the cell cleared
-                    Debug.Print "Cleared (null) in cell " & cell.Address & " of sheet " & ws.Name
-                End If
-            Next cell
+            ' Check if there are enough rows to divide into groups
+            If lastRow > 1 Then ' Ensure there's more than one row with data
+                ' Calculate the number of groups (16 groups)
+                groupCount = 16
+                groupSize = (lastRow - 1) \ groupCount ' Adjust to start from the second row
+                
+                ' Create an array to hold random rows
+                ReDim randomRows(1 To lastRow - 1)
+                For i = 1 To lastRow - 1
+                    randomRows(i) = i + 1 ' Store row numbers starting from 2
+                Next i
+                
+                ' Shuffle the array
+                Call ShuffleArray(randomRows)
+                
+                ' Apply color to the randomly selected rows
+                For i = 1 To lastRow - 1
+                    Dim rowIndex As Long
+                    rowIndex = randomRows(i)
+                    
+                    Select Case i
+                        Case 1 To groupSize
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 204) ' Light yellow
+                        Case groupSize + 1 To groupSize * 2
+                            ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 255) ' Light blue
+                        Case groupSize * 2 + 1 To groupSize * 3
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 204) ' Light pink
+                        Case groupSize * 3 + 1 To groupSize * 4
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 153) ' Light orange
+                        Case groupSize * 4 + 1 To groupSize * 5
+                            ws.Rows(rowIndex).Interior.Color = RGB(204, 204, 255) ' Light purple
+                        Case groupSize * 5 + 1 To groupSize * 6
+                            ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 204) ' Light green
+                        Case groupSize * 6 + 1 To groupSize * 7
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 153) ' Light yellow-green
+                        Case groupSize * 7 + 1 To groupSize * 8
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 153, 153) ' Light coral
+                        Case groupSize * 8 + 1 To groupSize * 9
+                            ws.Rows(rowIndex).Interior.Color = RGB(153, 204, 255) ' Light sky blue
+                        Case groupSize * 9 + 1 To groupSize * 10
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 204, 255) ' Light lavender
+                        Case groupSize * 10 + 1 To groupSize * 11
+                            ws.Rows(rowIndex).Interior.Color = RGB(204, 255, 153) ' Light lime
+                        Case groupSize * 11 + 1 To groupSize * 12
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 153, 204) ' Light pinkish purple
+                        Case groupSize * 12 + 1 To groupSize * 13
+                            ws.Rows(rowIndex).Interior.Color = RGB(153, 255, 255) ' Light cyan
+                        Case groupSize * 13 + 1 To groupSize * 14
+                            ws.Rows(rowIndex).Interior.Color = RGB(255, 255, 102) ' Bright yellow
+                        Case groupSize * 14 + 1 To groupSize * 15
+                            ws.Rows(rowIndex).Interior.Color = RGB(153, 255, 153) ' Light mint green
+                        Case Else
+                            ws.Rows(rowIndex).Interior.Color = RGB(204, 153, 255) ' Light violet
+                    End Select
+                Next i
+            End If
         Next ws
-        
-        ' Notify the user
-        MsgBox "All '(null)' values have been cleared from the workbook.", vbInformation
-    End Sub
-
-    Sub ResetAllSheetColorsAndResizeCells() ' รีเซตสีทั้ง workbook และปรับขนาด
-        Dim ws As Worksheet
-        
-        ' Loop through each worksheet in the workbook
-        For Each ws In ThisWorkbook.Sheets
-            ' Clear any background color by setting Interior.ColorIndex to xlNone
-            ws.Cells.Interior.ColorIndex = xlNone
-            
-            ' Set all rows' height to 15
-            ws.Rows.RowHeight = 15
-            
-            ' Set all columns' width to 15
-            ws.Columns.ColumnWidth = 15
-            
-            ' Debug log - indicate the sheet color reset and resizing
-            Debug.Print "Cleared all colors and resized cells in sheet: " & ws.Name
-        Next ws
-        
-        ' Notify the user
-        MsgBox "All cell colors have been reset and cell sizes adjusted to 15 in every sheet.", vbInformation
+    
+        ' Notify that the operation is complete
+        MsgBox "Row coloring completed for all sheets with random grouping!", vbInformation
     End Sub
     
+    ' Function to shuffle an array randomly
+    Sub ShuffleArray(arr() As Long)
+        Dim i As Long, j As Long
+        Dim temp As Long
+        Dim n As Long
+        
+        n = UBound(arr)
+        Randomize ' Initialize random number generator
+    
+        For i = n To 2 Step -1
+            j = Int((i - 1) * Rnd) + 1 ' Generate a random index
+            ' Swap arr(i) with arr(j)
+            temp = arr(i)
+            arr(i) = arr(j)
+            arr(j) = temp
+        Next i
+    End Sub
+
+        Sub CopyRowsBasedOn16ColorsToNewWorkbook()
+            Dim ws As Worksheet
+            Dim lastRow As Long
+            Dim i As Long
+            Dim targetWs(1 To 16) As Worksheet
+            Dim targetRow(1 To 16) As Long
+            Dim colors As Variant
+            Dim j As Integer
+            Dim newWb As Workbook
+            
+            ' Define the RGB color for each of the 16 colors
+            colors = Array(RGB(255, 255, 204), RGB(204, 255, 255), RGB(255, 204, 204), _
+                           RGB(255, 204, 153), RGB(204, 204, 255), RGB(153, 255, 204), _
+                           RGB(255, 153, 204), RGB(255, 255, 153), RGB(153, 204, 255), _
+                           RGB(204, 255, 153), RGB(255, 204, 255), RGB(204, 255, 204), _
+                           RGB(255, 204, 153), RGB(153, 255, 255), RGB(153, 255, 153), _
+                           RGB(204, 153, 255)) ' Added 16th color
+        
+            ' Create a new workbook for the target sheets
+            Set newWb = Workbooks.Add
+            Debug.Print "New workbook created for colored rows."
+            
+            ' Create new sheets for each color in the new workbook
+            For j = 1 To 16
+                Set targetWs(j) = newWb.Sheets.Add
+                targetWs(j).Name = "Color" & j & "Rows"
+                targetRow(j) = 1 ' Initialize target row for each sheet
+                Debug.Print "Created sheet for Color" & j & "Rows in new workbook."
+            Next j
+        
+            ' Debug log - starting the process
+            Debug.Print "Starting to process all sheets to find colored rows"
+            
+            ' Loop through each worksheet in the original workbook
+            For Each ws In ThisWorkbook.Sheets
+                ' Skip the sheets in the current workbook created for each color
+                If ws.Name <> "1" And ws.Name <> "2" And _
+                   ws.Name <> "3" And ws.Name <> "4" And _
+                   ws.Name <> "5" And ws.Name <> "6" And _
+                   ws.Name <> "7" And ws.Name <> "8" And _
+                   ws.Name <> "9" And ws.Name <> "10" And _
+                   ws.Name <> "11" And ws.Name <> "12" And _
+                   ws.Name <> "13" And ws.Name <> "14" And _
+                   ws.Name <> "15" And ws.Name <> "16" And _
+                   ws.Name <> "NID" Then ' Skip "NID" sheet as well
+                    
+                    ' Debug log - current sheet being processed
+                    Debug.Print "Processing sheet: " & ws.Name
+                    
+                    ' Find the last row with data in column A
+                    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+                    
+                    ' Debug log - number of rows in the current sheet
+                    Debug.Print "Total rows in sheet " & ws.Name & ": " & lastRow
+                    
+                    ' Loop through each row to check color
+                    For i = 2 To lastRow ' Start from row 2 (skip header)
+                        With ws.Rows(i).Interior
+                            ' Check for each color and copy row to corresponding sheet
+                            For j = 1 To 16
+                                If .Color = colors(j - 1) Then
+                                    ws.Rows(i).Copy targetWs(j).Rows(targetRow(j))
+                                    targetRow(j) = targetRow(j) + 1 ' Move to next row in target sheet
+                                    Debug.Print "Copied row " & i & " from sheet " & ws.Name & " to Color" & j & "Rows in new workbook."
+                                    Exit For ' Exit loop once the correct color is found
+                                End If
+                            Next j
+                        End With
+                    Next i
+                End If
+            Next ws
+        
+            ' Debug log - finished processing
+            Debug.Print "Finished processing all sheets"
+            
+            ' Notify that the operation is complete
+            MsgBox "Row copying completed for all colored rows into a new workbook!", vbInformation
+        End Sub
+        
+'-------------------------------------------------------------ลบชีทในไฟล์ ยกเว้นชีท NID----------------------------------------------------        
+            Sub DeleteAllSheetsExceptNID()
+                Dim ws As Worksheet
+                Application.DisplayAlerts = False
+                For Each ws In ThisWorkbook.Worksheets
+                    If ws.Name <> "NID" Then
+                        ws.Delete
+                    End If
+                Next ws
+                Application.DisplayAlerts = True
+            End Sub
+'-------------------------------------------------------------คัดลอกข้อมูลพร้อมสร้างชีทใหม่จากไฟล์ข้อมูลหลัก โดยค้นหาตามค่าที่ตั้งไว้-----------------------------------------------------            
+                Sub OptimizeExcelSettings()
+                    With Application
+                        ' Store current settings
+                        SaveCalc = .Calculation
+                        SaveEvents = .EnableEvents
+                        SaveUpdating = .ScreenUpdating
+                        SaveDisplayAlerts = .DisplayAlerts
+                        SaveEnableAnimations = .EnableAnimations
+                        
+                        ' Optimize settings
+                        .Calculation = xlCalculationManual
+                        .EnableEvents = False
+                        .ScreenUpdating = False
+                        .DisplayAlerts = False
+                        .EnableAnimations = False
+                    End With
+                End Sub
+                
+                Sub RestoreExcelSettings()
+                    With Application
+                        .Calculation = SaveCalc
+                        .EnableEvents = SaveEvents
+                        .ScreenUpdating = SaveUpdating
+                        .DisplayAlerts = SaveDisplayAlerts
+                        .EnableAnimations = SaveEnableAnimations
+                        
+                        ' Force update
+                        .ScreenUpdating = True
+                    End With
+                End Sub
+                Sub CopySingleInstanceToGOTOPT09_BY_CASE()
+                    On Error GoTo ErrorHandler
+                    
+                    ' Declare variables
+                    Dim wsSource As Worksheet
+                    Dim wsTarget As Worksheet
+                    Dim lastRow As Long
+                    Dim dict As Object
+                    Dim cell As Range
+                    Dim rowIndex As Long
+                    Dim logFile As String
+                    Dim fileNumber As Integer
+                    Dim key As Variant
+                    Dim processedCount As Long
+                    Dim currentTime As String
+                    Dim errorMessage As String
+                    Dim foundValue As Boolean
+                    
+                    ' Initialize variables
+                    processedCount = 0
+                    currentTime = Format(Now, "yyyy-mm-dd hh:mm:ss")
+                    fileNumber = 0
+                    
+                    ' Optimize Excel settings
+                    Call OptimizeExcelSettings
+                    
+                    ' Set source worksheet
+                    Set wsSource = ThisWorkbook.Sheets("NID")
+                    If wsSource Is Nothing Then
+                        MsgBox "Sheet 'NID' not found!", vbCritical
+                        GoTo CleanExit
+                    End If
+                    
+                    ' Set or create target worksheet
+                    On Error Resume Next
+                    Set wsTarget = ThisWorkbook.Sheets("GOTO PT09")
+                    On Error GoTo ErrorHandler
+                    
+                    If wsTarget Is Nothing Then
+                        Set wsTarget = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+                        wsTarget.Name = "GOTO PT09"
+                    Else
+                        wsTarget.Cells.Clear
+                    End If
+                    
+                    ' Copy headers from source to target
+                    wsSource.Rows(1).Copy Destination:=wsTarget.Rows(1)
+                    
+                    ' Find last row
+                    lastRow = wsSource.Cells(wsSource.Rows.Count, "B").End(xlUp).Row
+                    If lastRow < 2 Then
+                        MsgBox "No data found in source sheet!", vbExclamation
+                        GoTo CleanExit
+                    End If
+                    
+                    ' Set up dictionary
+                    Set dict = CreateObject("Scripting.Dictionary")
+                    
+                    ' Set up log file
+                    logFile = ThisWorkbook.Path & "\debuglog_COUNT_SPARE_COPY.log"
+                    fileNumber = FreeFile
+                    Open logFile For Output As fileNumber
+                    Print #fileNumber, "Debug Log - Started at " & currentTime
+                    Print #fileNumber, "======================================================"
+                    
+                    ' First pass: Count unique values and log initial counts
+                    Print #fileNumber, "Initial count of values in column B:"
+                    For Each cell In wsSource.Range("B2:B" & lastRow)
+                        If Not IsEmpty(cell) Then
+                            If dict.Exists(cell.Value) Then
+                                dict(cell.Value) = dict(cell.Value) + 1
+                            Else
+                                dict.Add cell.Value, 1
+                            End If
+                        End If
+                    Next cell
+                    
+                    ' Log initial counts
+                    For Each key In dict.Keys
+                        Print #fileNumber, "Value: " & key & " - Count: " & dict(key)
+                    Next key
+                    
+                    ' Process duplicates
+                    For Each key In dict.Keys
+                        If dict(key) > 1 Then
+                            foundValue = False
+                            For rowIndex = 2 To lastRow
+                                ' Check if row still exists and matches key
+                                If Not IsEmpty(wsSource.Cells(rowIndex, "B")) Then
+                                    If wsSource.Cells(rowIndex, "B").Value = key Then
+                                        ' Check for matching criteria in column I
+                                        Select Case wsSource.Cells(rowIndex, "I").Value
+                                            Case "00002120", "00002130", "00002110"
+                                                If Not foundValue Then
+                                                    ' Copy entire row to target sheet
+                                                    wsSource.Rows(rowIndex).Copy _
+                                                        Destination:=wsTarget.Cells(wsTarget.Rows.Count, 1).End(xlUp).Offset(1, 0)
+                                                    
+                                                    ' Log successful copy
+                                                    Print #fileNumber, Format(Now, "hh:mm:ss") & " - Copied: " & key & _
+                                                          " (Value in I: " & wsSource.Cells(rowIndex, "I").Value & _
+                                                          ") from row " & rowIndex
+                                                    
+                                                    ' Delete source row
+                                                    wsSource.Rows(rowIndex).Delete
+                                                    lastRow = lastRow - 1
+                                                    processedCount = processedCount + 1
+                                                    foundValue = True
+                                                End If
+                                        End Select
+                                    End If
+                                End If
+                            Next rowIndex
+                        End If
+                    Next key
+                    
+                    ' Final log entries
+                    Print #fileNumber, "======================================================"
+                    Print #fileNumber, "Process completed at " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+                    Print #fileNumber, "Total rows processed: " & processedCount
+                    Close #fileNumber
+                    
+                    ' Show completion message with more detail
+                    MsgBox "Process completed successfully!" & vbNewLine & _
+                           "Rows processed: " & processedCount & vbNewLine & _
+                           "See log file for details.", vbInformation
+                    
+                CleanExit:
+                    If fileNumber > 0 Then Close #fileNumber
+                    Call RestoreExcelSettings
+                    Exit Sub
+                
+                ErrorHandler:
+                    errorMessage = "ERROR at " & Format(Now, "yyyy-mm-dd hh:mm:ss") & ": " & Err.Description
+                    
+                    On Error Resume Next
+                    If fileNumber > 0 Then
+                        Print #fileNumber, errorMessage
+                        Close #fileNumber
+                    End If
+                    
+                    Call RestoreExcelSettings
+                    MsgBox "An error occurred: " & Err.Description, vbCritical
+                    Resume CleanExit
+                End Sub
+ '------------------------------------------------------------------------------------------------------------------                
+    'ต้องการให้ตรวจสอบว่าค่าอะไรใน OFFCOD+BRA.xlsx ที่ไม่มีในไฟล์ปัจจุบัน
+    Sub CompareAndLogReverseData()
+        Dim wsMain As Worksheet
+        Dim wsOffcid As Worksheet
+        Dim wbOffcod As Workbook
+        Dim lastRowMain As Long
+        Dim lastRowOffcid As Long
+        Dim offcidValue As String
+        Dim i As Long
+        Dim found As Boolean
+        Dim logFile As String
+        Dim fileNum As Integer
+        
+        ' Set reference to current worksheet
+        Set wsMain = ActiveSheet
+        
+        ' Open OFFCOD+BRA.xlsx
+        On Error Resume Next
+        Set wbOffcod = Workbooks.Open(ThisWorkbook.Path & "\OFFCOD+BRA.xlsx")
+        If Err.Number <> 0 Then
+            MsgBox "Cannot open OFFCOD+BRA.xlsx. Please check file location.", vbCritical
+            Exit Sub
+        End If
+        On Error GoTo 0
+        
+        ' Set reference to OFFCID worksheet
+        Set wsOffcid = wbOffcod.Sheets("OFFCID")
+        
+        ' Find last rows in both sheets
+        lastRowMain = wsMain.Cells(wsMain.Rows.Count, "B").End(xlUp).Row
+        lastRowOffcid = wsOffcid.Cells(wsOffcid.Rows.Count, "C").End(xlUp).Row
+        
+        ' Create log file
+        logFile = ThisWorkbook.Path & "\CHKMATCH_DATA.txt"
+        fileNum = FreeFile
+        Open logFile For Output As fileNum
+        
+        ' Write header to log file
+        Print #fileNum, "Values in OFFCOD+BRA.xlsx not found in current file"
+        Print #fileNum, "Check Date: " & Format(Now, "dd/mm/yyyy hh:mm:ss")
+        Print #fileNum, String(50, "-")
+        
+        ' Compare values
+        For i = 2 To lastRowOffcid
+            offcidValue = Trim(wsOffcid.Cells(i, "C").Value)
+            If offcidValue <> "" Then
+                found = False
+                
+                ' Look for value in current sheet
+                On Error Resume Next
+                found = Not isError(Application.Match(offcidValue, wsMain.Range("B2:B" & lastRowMain), 0))
+                On Error GoTo 0
+                
+                ' If not found, write to log
+                If Not found Then
+                    Print #fileNum, "Row " & i & ": " & offcidValue
+                End If
+            End If
+        Next i
+        
+        ' Close log file and workbook
+        Close fileNum
+        wbOffcod.Close False
+        
+        ' Show completion message
+        MsgBox "Check completed. Please review results in CHKMATCH_DATA.txt", vbInformation
+    End Sub
+  '------------------------------------------------------------------------------------------------------------------    
+ 'หาค่า OFFCOD ที่ไม่เหมือนเพื่อน กรณี OFFCOD >04
+        Sub CheckAndHighlightRows()
+            Dim ws As Worksheet
+            Dim lastRow As Long
+            Dim i As Long
+            Dim valuesDict As Object
+            Dim cellValueB As String
+            Dim cellValueC As String
+            
+            ' Set reference to active worksheet
+            Set ws = ActiveSheet
+            
+            ' Find last row with data
+            lastRow = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
+            
+            ' Create dictionary to store unique values
+            Set valuesDict = CreateObject("Scripting.Dictionary")
+            
+            ' First pass: Check column B for values starting with >= "04"
+            For i = 2 To lastRow ' Starting from row 2 assuming row 1 is header
+                cellValueB = ws.Cells(i, "B").Value
+                
+                ' Check if value starts with number >= 04
+                If Len(cellValueB) >= 2 Then
+                    If Left(cellValueB, 2) >= "04" Then
+                        ' Store the corresponding value from column C
+                        cellValueC = ws.Cells(i, "C").Value
+                        
+                        ' Check if we've seen this value before
+                        If valuesDict.Exists(cellValueB) Then
+                            ' If value in column C is different, highlight both rows
+                            If valuesDict(cellValueB) <> cellValueC Then
+                                ws.Rows(i).Interior.Color = RGB(255, 255, 0) ' Yellow
+                                
+                                ' Find and highlight the previous row with the same column B value
+                                Dim j As Long
+                                For j = 2 To lastRow
+                                    If ws.Cells(j, "B").Value = cellValueB Then
+                                        ws.Rows(j).Interior.Color = RGB(255, 255, 0) ' Yellow
+                                    End If
+                                Next j
+                            End If
+                        Else
+                            ' Add new value to dictionary
+                            valuesDict.Add cellValueB, cellValueC
+                        End If
+                    End If
+                End If
+            Next i
+        End Sub
+ '------------------------------------------------------------------------------------------------------------------ 
+ 'ลบข้อมูล "(null)" ทั้งไฟล์
+ Private Sub WriteDebugLog(ByVal debugNum As Integer, ByVal message As String)
+    On Error Resume Next
+    If debugNum > 0 Then
+        Debug.Print message
+        Print #debugNum, Format(Now, "yyyy-mm-dd hh:mm:ss") & " - " & message
+    End If
+End Sub
+
+Sub RemoveNullValuesOptimized()
+    Dim ws As Worksheet
+    Dim dataArray As Variant
+    Dim lastRow As Long, lastCol As Long
+    Dim nullCount As Long, processedCount As Long
+    Dim i As Long, j As Long, chunkStart As Long
+    Dim logNum As Ianteger, debugNum As Integer
+    Dim startTime As Date, chunkTime As Date
+    Dim logFile As String, debugFile As String
+    Dim isError As Boolean
+    
+    On Error GoTo ErrorHandler
+    
+    ' Initialize variables
+    startTime = Now
+    nullCount = 0
+    processedCount = 0
+    isError = False
+    
+    ' Set up log files
+    logFile = ThisWorkbook.Path & "\RemoveNull_Log.txt"
+    debugFile = ThisWorkbook.Path & "\RemoveNull_Debug.log"
+    
+    ' Open log files
+    logNum = FreeFile
+    Open logFile For Output As logNum
+    
+    debugNum = FreeFile
+    Open debugFile For Output As debugNum
+    
+    ' Enable optimizations
+    Call OptimizeExcelSettings
+    
+    For Each ws In ThisWorkbook.Worksheets
+        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+        lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+        
+        If lastRow > 1 And lastCol > 0 Then
+            WriteDebugLog debugNum, "Processing " & ws.Name & " - Rows: " & lastRow & ", Columns: " & lastCol
+            
+            For chunkStart = 1 To lastRow Step 1000
+                chunkTime = Now
+                Dim chunkEnd As Long
+                chunkEnd = WorksheetFunction.Min(chunkStart + 999, lastRow)
+                
+                ' Read data into array
+                dataArray = ws.Range(ws.Cells(chunkStart, 1), ws.Cells(chunkEnd, lastCol)).Value
+                
+                ' Process array
+                For i = 1 To UBound(dataArray, 1)
+                    For j = 1 To UBound(dataArray, 2)
+                        If Not IsEmpty(dataArray(i, j)) Then
+                            If CStr(dataArray(i, j)) = "(null)" Then
+                                dataArray(i, j) = Empty
+                                nullCount = nullCount + 1
+                            End If
+                        End If
+                        processedCount = processedCount + 1
+                    Next j
+                Next i
+                
+                ' Write processed data back
+                ws.Range(ws.Cells(chunkStart, 1), ws.Cells(chunkEnd, lastCol)).Value = dataArray
+                
+                WriteDebugLog debugNum, "Completed chunk " & chunkStart & " to " & chunkEnd & _
+                                      " in " & Format(Now - chunkTime, "hh:mm:ss")
+                
+                DoEvents
+            Next chunkStart
+        End If
+    Next ws
+
+CleanupAndExit:
+    If debugNum > 0 Then
+        WriteDebugLog debugNum, "Process " & IIf(isError, "failed", "completed") & " at " & Now
+        WriteDebugLog debugNum, "Total cells processed: " & processedCount
+        WriteDebugLog debugNum, "Total nulls removed: " & nullCount
+        Close #debugNum
+    End If
+    
+    If logNum > 0 Then Close #logNum
+    
+    Call RestoreExcelSettings
+    
+    If Not isError Then
+        MsgBox "Process completed successfully!" & vbNewLine & _
+               "Cells processed: " & Format(processedCount, "#,##0") & vbNewLine & _
+               "Nulls removed: " & Format(nullCount, "#,##0") & vbNewLine & _
+               "Time taken: " & Format(Now - startTime, "hh:mm:ss"), vbInformation
+    End If
+    Exit Sub
+
+ErrorHandler:
+    isError = True
+    Debug.Print "Error " & Err.Number & ": " & Err.Description
+    
+    If debugNum > 0 Then
+        WriteDebugLog debugNum, "ERROR " & Err.Number & ": " & Err.Description
+    End If
+    
+    MsgBox "An error occurred: " & Err.Description, vbCritical
+    Resume CleanupAndExit
+End Sub
+ '------------------------------------------------------------------------------------------------------------------ 
+ 
