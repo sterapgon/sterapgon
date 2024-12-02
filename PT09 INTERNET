@@ -1,0 +1,1372 @@
+Sub OptimizeExcelSettings()
+    With Application
+        ' Store current settings
+        SaveCalc = .Calculation
+        SaveEvents = .EnableEvents
+        SaveUpdating = .ScreenUpdating
+        SaveDisplayAlerts = .DisplayAlerts
+        SaveEnableAnimations = .EnableAnimations
+        
+        ' Optimize settings
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .ScreenUpdating = False
+        .DisplayAlerts = False
+        .EnableAnimations = False
+    End With
+End Sub
+
+Sub RestoreExcelSettings()
+    With Application
+        .Calculation = SaveCalc
+        .EnableEvents = SaveEvents
+        .ScreenUpdating = SaveUpdating
+        .DisplayAlerts = SaveDisplayAlerts
+        .EnableAnimations = SaveEnableAnimations
+        
+        ' Force update
+        .ScreenUpdating = True
+    End With
+End Sub
+Sub FillPDFWithMultipleSheet_PT09()
+    ' ------------------- Initialize Acrobat Application -------------------
+    Dim AcroApp As Object
+    Set AcroApp = CreateObject("AcroExch.App")
+    
+    ' ------------------- Initialize Log File -------------------
+    Dim logFilePath As String, logFile As Integer
+    logFilePath = ThisWorkbook.Path & "\PDF_Generation_Log.txt"
+    logFile = FreeFile
+    Open logFilePath For Append As #logFile
+
+    ' ------------------- Initialize Workbook Sheets -------------------
+    Dim ws1 As Worksheet, ws2 As Worksheet, ws3 As Worksheet, ws4 As Worksheet, ws5 As Worksheet
+    Dim ws6 As Worksheet, ws7 As Worksheet, ws8 As Worksheet, ws9 As Worksheet, ws10 As Worksheet
+    Dim ws11 As Worksheet, ws12 As Worksheet, ws13 As Worksheet, ws14 As Worksheet, ws15 As Worksheet
+    Dim ws16 As Worksheet
+
+    Dim AREAMOV_D As String, AREAMOV_M As String, AREAMOV_Y As String 
+    Dim BRA_BUSLOCTYP As String
+    Dim PrevSUPOFFCOD As String, PrevOFFCOD As String
+    Dim SUPOFFNUMBER As Long, OFFNUMBER As Long
+    Dim NUMBER As String, NUMBER2 As String
+    Dim TITNAM_OLD As String, FIRNAM_OLD As String, LASNAM_OLD As String
+    Dim PER_NEWTITCOD As String, PER_NEWFIRNAM As String, PER_NEWLASNAM As String
+    Dim BUS_NEWTITCOD As String, BUS_NEWFIRNAM As String
+    
+    Set ws1 = ThisWorkbook.Sheets("DATA NID")
+    Set ws2 = ThisWorkbook.Sheets("DIS")
+    Set ws3 = ThisWorkbook.Sheets("AMA")
+    Set ws4 = ThisWorkbook.Sheets("TRF")
+    Set ws5 = ThisWorkbook.Sheets("PARTRF")
+    Set ws6 = ThisWorkbook.Sheets("BUSTYPCHG")
+    Set ws7 = ThisWorkbook.Sheets("BRANIC")
+    Set ws8 = ThisWorkbook.Sheets("BRADEC")
+    Set ws9 = ThisWorkbook.Sheets("TRM")
+    Set ws10 = ThisWorkbook.Sheets("TXPNAMCHG")
+    Set ws11 = ThisWorkbook.Sheets("BRANAMCHG")
+    Set ws12 = ThisWorkbook.Sheets("BUSTMPCLS")
+    Set ws13 = ThisWorkbook.Sheets("TXPDIE")
+    Set ws14 = ThisWorkbook.Sheets("CHGOTHER")
+    Set ws15 = ThisWorkbook.Sheets("CHGAREALOC")
+    Set ws16 = ThisWorkbook.Sheets("AREAMOV")
+    
+    ' ------------------- Initialize Row Counters -------------------
+    Dim lastRow1 As Long, lastRow2 As Long, lastRow3 As Long, lastRow4 As Long
+    Dim lastRow5 As Long, lastRow6 As Long, lastRow7 As Long, lastRow8 As Long
+    Dim lastRow9 As Long, lastRow10 As Long, lastRow11 As Long, lastRow12 As Long
+    Dim lastRow13 As Long, lastRow14 As Long, lastRow15 As Long, lastRow16 As Long
+    
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    Debug.Print "Excel settings optimized"
+
+    lastRow1 = ws1.Cells(ws1.Rows.Count, "A").End(xlUp).row
+    lastRow2 = ws2.Cells(ws2.Rows.Count, "A").End(xlUp).row
+    lastRow3 = ws3.Cells(ws3.Rows.Count, "A").End(xlUp).row
+    lastRow4 = ws4.Cells(ws4.Rows.Count, "A").End(xlUp).row
+    lastRow5 = ws5.Cells(ws5.Rows.Count, "A").End(xlUp).row
+    lastRow6 = ws6.Cells(ws6.Rows.Count, "A").End(xlUp).row
+    lastRow7 = ws7.Cells(ws7.Rows.Count, "A").End(xlUp).row
+    lastRow8 = ws8.Cells(ws8.Rows.Count, "A").End(xlUp).row
+    lastRow9 = ws9.Cells(ws9.Rows.Count, "A").End(xlUp).row
+    lastRow10 = ws10.Cells(ws10.Rows.Count, "A").End(xlUp).row
+    lastRow11 = ws11.Cells(ws11.Rows.Count, "A").End(xlUp).row
+    lastRow12 = ws12.Cells(ws12.Rows.Count, "A").End(xlUp).row
+    lastRow13 = ws13.Cells(ws13.Rows.Count, "A").End(xlUp).row
+    lastRow14 = ws14.Cells(ws14.Rows.Count, "A").End(xlUp).row
+    lastRow15 = ws15.Cells(ws15.Rows.Count, "A").End(xlUp).row
+    lastRow16 = ws16.Cells(ws16.Rows.Count, "A").End(xlUp).row
+    
+    ' ------------------- Initialize Counters -------------------
+    Dim suPDFCount As Integer, offPDFCount As Integer, pdfCount As Integer
+    suPDFCount = 0
+    offPDFCount = 0
+    pdfCount = 0
+
+    ' ------------------- Initialize Dictionary to track SUPOFFCOD counts -------------------
+    Dim suPDFCountDict As Object
+    Set suPDFCountDict = CreateObject("Scripting.Dictionary")
+    
+    ' ------------------- Iterate through NID_DETAIL records -------------------
+    Dim i As Long
+    For i = 2 To lastRow1
+        Debug.Print "Processing : " & i & " From " & lastRow1
+        On Error GoTo ErrorHandler
+        
+        ' ------------------- Open PDF and Fill Fields -------------------
+        Dim AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object
+        Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+        If Not OpenPDFDocument(AcroAVDoc, AcroPDDoc, AcroForm, "PT09-INTERNET.pdf") Then GoTo ErrorHandler
+        
+        Dim NID As String, OFFCOD As String, SUPOFFCOD As String, OFFNAM As String, SUPOFFNAM As String, LTOFLG As String
+        Dim TITLENAM As String, FIRNAM As String, MIDNAM As String, BRANAM As String, BLDGNAM As String, ROOMNO As String
+        Dim FLOORNO As String, VILLAGE As String, ADDNO As String, MOONO As String, SOINAM As String, YAEK As String
+        Dim THNNAM As String, TAMNAM As String, AMPNAM As String, PROVNAM As String, POSCOD As String
+
+
+        ' Retrieve data from Sheet1 (NID DETAIL)
+        NID = ws1.Cells(i, "D").Value
+        OFFCOD = ws1.Cells(i, "C").Value
+        SUPOFFCOD = ws1.Cells(i, "B").Value
+        OFFNAM = ws1.Cells(i, "W").Value
+        SUPOFFNAM = ws1.Cells(i, "X").Value
+        LTOFLG = ws1.Cells(i, "E").Value
+        FIRNAM = ws1.Cells(i, "H").Value & " " & ws1.Cells(i, "J").Value & " " & ws1.Cells(i, "K").Value & " " & ws1.Cells(i, "L").Value
+        BRANAM = ws1.Cells(i, "T").Value & " " & ws1.Cells(i, "V").Value
+        ' Retrieve data ADDRESS
+        BLDGNAM = ws1.Cells(i, "AA").Value
+        ROOMNO = ws1.Cells(i, "AB").Value
+        FLOORNO = ws1.Cells(i, "AC").Value
+        VILLAGE = ws1.Cells(i, "AD").Value
+        ADDNO = ws1.Cells(i, "AE").Value
+        MOONO = ws1.Cells(i, "AF").Value
+        SOINAM = ws1.Cells(i, "AG").Value
+        YAEK = ws1.Cells(i, "AH").Value
+        THNNAM = ws1.Cells(i, "AI").Value
+        TAMNAM = ws1.Cells(i, "AK").Value
+        AMPNAM = ws1.Cells(i, "AM").Value
+        PROVNAM = ws1.Cells(i, "AO").Value
+        POSCOD = ws1.Cells(i, "AP").Value
+        
+        ' Processing SUPOFFCOD and OFFCOD to count PDFs
+        If SUPOFFCOD <> PrevSUPOFFCOD Then
+            If SUPOFFCOD <> "" Then
+                suPDFCountDict(SUPOFFCOD) = suPDFCountDict(SUPOFFCOD) + 1
+            End If
+        End If
+            
+               ' Check the first two digits of SUPOFFCOD
+                If Left(SUPOFFCOD, 2) < "04" Then
+                    ' Case for SUPOFFCOD
+                    'AcroForm.getField("SUP_CHK").Value = "Yes"
+                    'AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+            
+                    ' Check if SUPOFFCOD has changed from the previous iteration
+                    If SUPOFFCOD <> PrevSUPOFFCOD Then
+                        ' Reset SUPOFFNUMBER if the code has changed
+                        SUPOFFNUMBER = 0
+                    End If
+            
+                    ' Increment SUPOFFNUMBER and format it
+                    SUPOFFNUMBER = SUPOFFNUMBER + 1
+                    NUMBER = Format(SUPOFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PT09-P-" & NUMBER
+            
+                    ' Store the current SUPOFFCOD as the previous one for the next iteration
+                    PrevSUPOFFCOD = SUPOFFCOD
+            
+                Else
+                    ' Case for OFFCOD
+                    'AcroForm.getField("OFFCOD_CHK").Value = "Yes"
+                    'AcroForm.getField("OFFNAM").Value = OFFNAM
+            
+                    ' Check if OFFCOD has changed from the previous iteration
+                    If OFFCOD <> PrevOFFCOD Then
+                        ' Reset OFFNUMBER if the code has changed
+                        OFFNUMBER = 0
+                    End If
+            
+                    ' Increment OFFNUMBER and format it
+                    OFFNUMBER = OFFNUMBER + 1
+                    NUMBER2 = Format(OFFNUMBER, "0000")
+            
+                    ' Assign to header field
+                    AcroForm.getField("HEADER").Value = OFFCOD & "-PT09-P-" & NUMBER2
+            
+                    ' Store the current OFFCOD as the previous one for the next iteration
+                    PrevOFFCOD = OFFCOD
+                End If
+            
+            AcroForm.getField("NID").Value = NID
+            AcroForm.getField("FIRNAM").Value = FIRNAM
+            
+            With AcroForm
+                    If BRANAM <> "" Then .getField("BRANAM").Value = BRANAM
+                    If BLDGNAM <> "" Then .getField("BLDGNAM").Value = BLDGNAM
+                    If ROOMNO <> "" Then .getField("ROOMNO").Value = ROOMNO
+                    If FLOORNO <> "" Then .getField("FLOORNO").Value = FLOORNO
+                    If VILLAGE <> "" Then .getField("VILLAGE").Value = VILLAGE
+                    If ADDNO <> "" Then .getField("ADDNO").Value = ADDNO
+                    If MOONO <> "" Then .getField("MOONO").Value = MOONO
+                    If SOINAM <> "" Then .getField("SOINAM").Value = SOINAM
+                    If YAEK <> "" Then .getField("YAEK").Value = YAEK
+                    If THNNAM <> "" Then .getField("THNNAM").Value = THNNAM
+                    If TAMNAM <> "" Then .getField("TAM_NAME").Value = TAMNAM
+                    If AMPNAM <> "" Then .getField("AMP_NAME").Value = AMPNAM
+                    If PROVNAM <> "" Then .getField("PROV_NAME").Value = PROVNAM
+                    If POSCOD <> "" Then .getField("POSCOD").Value = POSCOD
+            End With
+            
+            ' 02 CHGAREALOC
+            Dim BRANO_15 As String, CHGAREALOC_DATE_D As String, CHGAREALOC_DATE_M As String, CHGAREALOC_DATE_Y As String
+            Dim BLDGNAM_15 As String, ROOMNO_15 As String, FLOORNO_15 As String, VILLAGE_15 As String, ADDNO_15 As String
+            Dim MOONO_15 As String, SOINAM_15 As String, YAEK_15 As String, THNNAM_15 As String, TAM_NAME_15 As String
+            Dim AMP_NAME_15 As String, PROV_NAME_15 As String, POSCOD_15 As String, TELNO_15 As String, BLDGNAM_15_NEW As String
+            Dim ROOMNO_15_NEW As String, FLOORNO_15_NEW As String, VILLAGE_15_NEW As String, ADDNO_15_NEW As String, MOONO_15_NEW As String
+            Dim SOINAM_15_NEW As String, YAEK_15_NEW As String, THNNAM_15_NEW As String, TAM_NAME_15_NEW As String, AMP_NAME_15_NEW As String
+            Dim PROV_NAME_15_NEW As String, POSCOD_15_NEW As String, TELNO_15_NEW As String
+            
+            ' Process data from Sheet14 (CHGOTHER)
+                            For w = 2 To lastRow15
+     
+                                If ws15.Cells(w, "A").Value = NID Then
+                   
+                                    If Not AcroForm.getField("CHGAREALOC_CHK") Is Nothing Then
+                                        AcroForm.getField("CHGAREALOC_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    BRANO_15 = ws15.Cells(w, "B").Value
+                                    CHGAREALOC_DATE_D = ws15.Cells(w, "C").Value
+                                    CHGAREALOC_DATE_M = ws15.Cells(w, "D").Value
+                                    CHGAREALOC_DATE_Y = ws15.Cells(w, "E").Value
+                                    BLDGNAM_15 = ws15.Cells(w, "F").Value
+                                    ROOMNO_15 = ws15.Cells(w, "G").Value
+                                    FLOORNO_15 = ws15.Cells(w, "H").Value
+                                    VILLAGE_15 = ws15.Cells(w, "I").Value
+                                    ADDNO_15 = ws15.Cells(w, "J").Value
+                                    MOONO_15 = ws15.Cells(w, "K").Value
+                                    SOINAM_15 = ws15.Cells(w, "L").Value
+                                    YAEK_15 = ws15.Cells(w, "M").Value
+                                    THNNAM_15 = ws15.Cells(w, "N").Value
+                                    TAM_NAME_15 = ws15.Cells(w, "O").Value
+                                    AMP_NAME_15 = ws15.Cells(w, "P").Value
+                                    PROV_NAME_15 = ws15.Cells(w, "Q").Value
+                                    POSCOD_15 = ws15.Cells(w, "R").Value
+                                    TELNO_15 = ws15.Cells(w, "S").Value
+                                    
+                                    BLDGNAM_15_NEW = ws15.Cells(w, "T").Value
+                                    ROOMNO_15_NEW = ws15.Cells(w, "U").Value
+                                    FLOORNO_15_NEW = ws15.Cells(w, "V").Value
+                                    VILLAGE_15_NEW = ws15.Cells(w, "W").Value
+                                    ADDNO_15_NEW = ws15.Cells(w, "X").Value
+                                    MOONO_15_NEW = ws15.Cells(w, "Y").Value
+                                    SOINAM_15_NEW = ws15.Cells(w, "Z").Value
+                                    YAEK_15_NEW = ws15.Cells(w, "AA").Value
+                                    THNNAM_15_NEW = ws15.Cells(w, "AB").Value
+                                    TAM_NAME_15_NEW = ws15.Cells(w, "AC").Value
+                                    AMP_NAME_15_NEW = ws15.Cells(w, "AD").Value
+                                    PROV_NAME_15_NEW = ws15.Cells(w, "AE").Value
+                                    POSCOD_15_NEW = ws15.Cells(w, "AF").Value
+                                    TELNO_15_NEW = ws15.Cells(w, "AG").Value
+
+                                    
+                                    If BRANO_15 = 0 Then
+                                        
+                                        If Not AcroForm.getField("CHGAREALOC_CHK_BRA0") Is Nothing Then
+                                            AcroForm.getField("CHGAREALOC_CHK_BRA0").Value = "Yes"
+                                        End If
+                                         
+                                        If Not IsEmpty(CHGAREALOC_DATE_D) And Not AcroForm.getField("CHGAREALOC_DATE.D") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.D").Value = CHGAREALOC_DATE_D
+                                        If Not IsEmpty(CHGAREALOC_DATE_M) And Not AcroForm.getField("CHGAREALOC_DATE.M") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.M").Value = CHGAREALOC_DATE_M
+                                        If Not IsEmpty(CHGAREALOC_DATE_Y) And Not AcroForm.getField("CHGAREALOC_DATE.Y") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.Y").Value = CHGAREALOC_DATE_Y
+                                        
+                                        If Not IsEmpty(BLDGNAM_15) And Not AcroForm.getField("CHGAREALOC_BLDGNAM") Is Nothing Then AcroForm.getField("CHGAREALOC_BLDGNAM").Value = BLDGNAM_15
+                                        If Not IsEmpty(ROOMNO_15) And Not AcroForm.getField("CHGAREALOC_ROOMNO") Is Nothing Then AcroForm.getField("CHGAREALOC_ROOMNO").Value = ROOMNO_15
+                                        If Not IsEmpty(FLOORNO_15) And Not AcroForm.getField("CHGAREALOC_FLOORNO") Is Nothing Then AcroForm.getField("CHGAREALOC_FLOORNO").Value = FLOORNO_15
+                                        If Not IsEmpty(VILLAGE_15) And Not AcroForm.getField("CHGAREALOC_VILLAGE") Is Nothing Then AcroForm.getField("CHGAREALOC_VILLAGE").Value = VILLAGE_15
+                                        If Not IsEmpty(ADDNO_15) And Not AcroForm.getField("CHGAREALOC_ADDNO") Is Nothing Then AcroForm.getField("CHGAREALOC_ADDNO").Value = ADDNO_15
+                                        If Not IsEmpty(MOONO_15) And Not AcroForm.getField("CHGAREALOC_MOONO") Is Nothing Then AcroForm.getField("CHGAREALOC_MOONO").Value = MOONO_15
+                                        If Not IsEmpty(SOINAM_15) And Not AcroForm.getField("CHGAREALOC_SOINAM") Is Nothing Then AcroForm.getField("CHGAREALOC_SOINAM").Value = SOINAM_15
+                                        If Not IsEmpty(YAEK_15) And Not AcroForm.getField("CHGAREALOC_YAEK") Is Nothing Then AcroForm.getField("CHGAREALOC_YAEK").Value = YAEK_15
+                                        If Not IsEmpty(THNNAM_15) And Not AcroForm.getField("CHGAREALOC_THNNAM") Is Nothing Then AcroForm.getField("CHGAREALOC_THNNAM").Value = THNNAM_15
+                                        If Not IsEmpty(TAM_NAME_15) And Not AcroForm.getField("CHGAREALOC_TAM_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_TAM_NAME").Value = TAM_NAME_15
+                                        If Not IsEmpty(AMP_NAME_15) And Not AcroForm.getField("CHGAREALOC_AMP_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_AMP_NAME").Value = AMP_NAME_15
+                                        If Not IsEmpty(PROV_NAME_15) And Not AcroForm.getField("CHGAREALOC_PROV_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_PROV_NAME").Value = PROV_NAME_15
+                                        If Not IsEmpty(POSCOD_15) And Not AcroForm.getField("CHGAREALOC_POSCOD") Is Nothing Then AcroForm.getField("CHGAREALOC_POSCOD").Value = POSCOD_15
+                                        If Not IsEmpty(TELNO_15) And Not AcroForm.getField("CHGAREALOC_TELNO") Is Nothing Then AcroForm.getField("CHGAREALOC_TELNO").Value = TELNO_15
+                                        
+                                        If Not IsEmpty(BLDGNAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_BLDGNAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_BLDGNAM_N").Value = BLDGNAM_15_NEW
+                                        If Not IsEmpty(ROOMNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_ROOMNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_ROOMNO_N").Value = ROOMNO_15_NEW
+                                        If Not IsEmpty(FLOORNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_FLOORNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_FLOORNO_N").Value = FLOORNO_15_NEW
+                                        If Not IsEmpty(VILLAGE_15_NEW) And Not AcroForm.getField("CHGAREALOC_VILLAGE_N") Is Nothing Then AcroForm.getField("CHGAREALOC_VILLAGE_N").Value = VILLAGE_15_NEW
+                                        If Not IsEmpty(ADDNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_ADDNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_ADDNO_N").Value = ADDNO_15_NEW
+                                        If Not IsEmpty(MOONO_15_NEW) And Not AcroForm.getField("CHGAREALOC_MOONO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_MOONO_N").Value = MOONO_15_NEW
+                                        If Not IsEmpty(SOINAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_SOINAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_SOINAM_N").Value = SOINAM_15_NEW
+                                        If Not IsEmpty(YAEK_15_NEW) And Not AcroForm.getField("CHGAREALOC_YAEK_N") Is Nothing Then AcroForm.getField("CHGAREALOC_YAEK_N").Value = YAEK_15_NEW
+                                        If Not IsEmpty(THNNAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_THNNAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_THNNAM_N").Value = THNNAM_15_NEW
+                                        If Not IsEmpty(TAM_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_TAM_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_TAM_NAME_N").Value = TAM_NAME_15_NEW
+                                        If Not IsEmpty(AMP_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_AMP_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_AMP_NAME_N").Value = AMP_NAME_15_NEW
+                                        If Not IsEmpty(PROV_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_PROV_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_PROV_NAME_N").Value = PROV_NAME_15_NEW
+                                        If Not IsEmpty(POSCOD_15_NEW) And Not AcroForm.getField("CHGAREALOC_POSCOD_N") Is Nothing Then AcroForm.getField("CHGAREALOC_POSCOD_N").Value = POSCOD_15_NEW
+                                        If Not IsEmpty(TELNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_TELNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_TELNO_N").Value = TELNO_15_NEW
+                                    Else
+                                    
+                                    If Not AcroForm.getField("CHGAREALOC_CHK_BRA") Is Nothing Then
+                                            AcroForm.getField("CHGAREALOC_CHK_BRA").Value = "Yes"
+                                        End If
+                                        
+                                        If Not IsEmpty(BRANO_15) And Not AcroForm.getField("CHGAREALOC_BRANO") Is Nothing Then AcroForm.getField("CHGAREALOC_BRANO").Value = Format(BRANO_15, "00000")
+                                                                                If Not IsEmpty(CHGAREALOC_DATE_D) And Not AcroForm.getField("CHGAREALOC_DATE.D") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.D").Value = CHGAREALOC_DATE_D
+                                        If Not IsEmpty(CHGAREALOC_DATE_M) And Not AcroForm.getField("CHGAREALOC_DATE.M") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.M").Value = CHGAREALOC_DATE_M
+                                        If Not IsEmpty(CHGAREALOC_DATE_Y) And Not AcroForm.getField("CHGAREALOC_DATE.Y") Is Nothing Then AcroForm.getField("CHGAREALOC_DATE.Y").Value = CHGAREALOC_DATE_Y
+                                        
+                                        If Not IsEmpty(BLDGNAM_15) And Not AcroForm.getField("CHGAREALOC_BLDGNAM") Is Nothing Then AcroForm.getField("CHGAREALOC_BLDGNAM").Value = BLDGNAM_15
+                                        If Not IsEmpty(ROOMNO_15) And Not AcroForm.getField("CHGAREALOC_ROOMNO") Is Nothing Then AcroForm.getField("CHGAREALOC_ROOMNO").Value = ROOMNO_15
+                                        If Not IsEmpty(FLOORNO_15) And Not AcroForm.getField("CHGAREALOC_FLOORNO") Is Nothing Then AcroForm.getField("CHGAREALOC_FLOORNO").Value = FLOORNO_15
+                                        If Not IsEmpty(VILLAGE_15) And Not AcroForm.getField("CHGAREALOC_VILLAGE") Is Nothing Then AcroForm.getField("CHGAREALOC_VILLAGE").Value = VILLAGE_15
+                                        If Not IsEmpty(ADDNO_15) And Not AcroForm.getField("CHGAREALOC_ADDNO") Is Nothing Then AcroForm.getField("CHGAREALOC_ADDNO").Value = ADDNO_15
+                                        If Not IsEmpty(MOONO_15) And Not AcroForm.getField("CHGAREALOC_MOONO") Is Nothing Then AcroForm.getField("CHGAREALOC_MOONO").Value = MOONO_15
+                                        If Not IsEmpty(SOINAM_15) And Not AcroForm.getField("CHGAREALOC_SOINAM") Is Nothing Then AcroForm.getField("CHGAREALOC_SOINAM").Value = SOINAM_15
+                                        If Not IsEmpty(YAEK_15) And Not AcroForm.getField("CHGAREALOC_YAEK") Is Nothing Then AcroForm.getField("CHGAREALOC_YAEK").Value = YAEK_15
+                                        If Not IsEmpty(THNNAM_15) And Not AcroForm.getField("CHGAREALOC_THNNAM") Is Nothing Then AcroForm.getField("CHGAREALOC_THNNAM").Value = THNNAM_15
+                                        If Not IsEmpty(TAM_NAME_15) And Not AcroForm.getField("CHGAREALOC_TAM_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_TAM_NAME").Value = TAM_NAME_15
+                                        If Not IsEmpty(AMP_NAME_15) And Not AcroForm.getField("CHGAREALOC_AMP_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_AMP_NAME").Value = AMP_NAME_15
+                                        If Not IsEmpty(PROV_NAME_15) And Not AcroForm.getField("CHGAREALOC_PROV_NAME") Is Nothing Then AcroForm.getField("CHGAREALOC_PROV_NAME").Value = PROV_NAME_15
+                                        If Not IsEmpty(POSCOD_15) And Not AcroForm.getField("CHGAREALOC_POSCOD") Is Nothing Then AcroForm.getField("CHGAREALOC_POSCOD").Value = POSCOD_15
+                                        If Not IsEmpty(TELNO_15) And Not AcroForm.getField("CHGAREALOC_TELNO") Is Nothing Then AcroForm.getField("CHGAREALOC_TELNO").Value = TELNO_15
+                                        
+                                        If Not IsEmpty(BLDGNAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_BLDGNAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_BLDGNAM_N").Value = BLDGNAM_15_NEW
+                                        If Not IsEmpty(ROOMNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_ROOMNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_ROOMNO_N").Value = ROOMNO_15_NEW
+                                        If Not IsEmpty(FLOORNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_FLOORNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_FLOORNO_N").Value = FLOORNO_15_NEW
+                                        If Not IsEmpty(VILLAGE_15_NEW) And Not AcroForm.getField("CHGAREALOC_VILLAGE_N") Is Nothing Then AcroForm.getField("CHGAREALOC_VILLAGE_N").Value = VILLAGE_15_NEW
+                                        If Not IsEmpty(ADDNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_ADDNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_ADDNO_N").Value = ADDNO_15_NEW
+                                        If Not IsEmpty(MOONO_15_NEW) And Not AcroForm.getField("CHGAREALOC_MOONO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_MOONO_N").Value = MOONO_15_NEW
+                                        If Not IsEmpty(SOINAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_SOINAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_SOINAM_N").Value = SOINAM_15_NEW
+                                        If Not IsEmpty(YAEK_15_NEW) And Not AcroForm.getField("CHGAREALOC_YAEK_N") Is Nothing Then AcroForm.getField("CHGAREALOC_YAEK_N").Value = YAEK_15_NEW
+                                        If Not IsEmpty(THNNAM_15_NEW) And Not AcroForm.getField("CHGAREALOC_THNNAM_N") Is Nothing Then AcroForm.getField("CHGAREALOC_THNNAM_N").Value = THNNAM_15_NEW
+                                        If Not IsEmpty(TAM_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_TAM_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_TAM_NAME_N").Value = TAM_NAME_15_NEW
+                                        If Not IsEmpty(AMP_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_AMP_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_AMP_NAME_N").Value = AMP_NAME_15_NEW
+                                        If Not IsEmpty(PROV_NAME_15_NEW) And Not AcroForm.getField("CHGAREALOC_PROV_NAME_N") Is Nothing Then AcroForm.getField("CHGAREALOC_PROV_NAME_N").Value = PROV_NAME_15_NEW
+                                        If Not IsEmpty(POSCOD_15_NEW) And Not AcroForm.getField("CHGAREALOC_POSCOD_N") Is Nothing Then AcroForm.getField("CHGAREALOC_POSCOD_N").Value = POSCOD_15_NEW
+                                        If Not IsEmpty(TELNO_15_NEW) And Not AcroForm.getField("CHGAREALOC_TELNO_N") Is Nothing Then AcroForm.getField("CHGAREALOC_TELNO_N").Value = TELNO_15_NEW
+                                        End If
+
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next w
+                
+                
+                ' 03 AREAMOV
+                Dim BRANO_16 As String, MOVINOUT As String, BLDGNAM_16 As String, ROOMNO_16 As String, FLOORNO_16 As String
+                Dim VILLAGE_16 As String, ADDNO_16 As String, MOONO_16 As String, SOINAM_16 As String, YAEK_16 As String
+                Dim THNNAM_16 As String, TAM_NAME_16 As String, AMP_NAME_16 As String, PROV_NAME_16 As String, POSCOD_16 As String
+                Dim TELNO_16 As String, BLDGNAM_16_NEW As String, ROOMNO_16_NEW As String, FLOORNO_16_NEW As String
+                Dim VILLAGE_16_NEW As String, ADDNO_16_NEW As String, MOONO_16_NEW As String, SOINAM_16_NEW As String
+                Dim YAEK_16_NEW As String, THNNAM_16_NEW As String, TAM_NAME_16_NEW As String, AMP_NAME_16_NEW As String
+                Dim PROV_NAME_16_NEW As String, POSCOD_16_NEW As String, TELNO_16_NEW As String, BUSLOCTYP_16_NEW As String
+                Dim PP20REQ As String
+
+                            For x = 2 To lastRow16
+                                If ws16.Cells(x, "A").Value = NID Then
+                                    AcroForm.getField("AREAMOV_CHK").Value = "Yes"
+                                    
+                                    BRANO_16 = ws16.Cells(x, "B").Value
+                                    MOVINOUT = ws16.Cells(x, "C").Value
+                                    
+                                    ' OLD ADDRESS
+                                    BLDGNAM_16 = ws16.Cells(x, "D").Value
+                                    ROOMNO_16 = ws16.Cells(x, "E").Value
+                                    FLOORNO_16 = ws16.Cells(x, "F").Value
+                                    VILLAGE_16 = ws16.Cells(x, "G").Value
+                                    ADDNO_16 = ws16.Cells(x, "H").Value
+                                    MOONO_16 = ws16.Cells(x, "I").Value
+                                    SOINAM_16 = ws16.Cells(x, "J").Value
+                                    YAEK_16 = ws16.Cells(x, "K").Value
+                                    THNNAM_16 = ws16.Cells(x, "L").Value
+                                    TAM_NAME_16 = ws16.Cells(x, "M").Value
+                                    AMP_NAME_16 = ws16.Cells(x, "N").Value
+                                    PROV_NAME_16 = ws16.Cells(x, "O").Value
+                                    POSCOD_16 = ws16.Cells(x, "P").Value
+                                    TELNO_16 = ws16.Cells(x, "Q").Value
+                                    
+                                    ' NEW ADDRESS
+                                    BLDGNAM_16_NEW = ws16.Cells(x, "R").Value
+                                    ROOMNO_16_NEW = ws16.Cells(x, "S").Value
+                                    FLOORNO_16_NEW = ws16.Cells(x, "T").Value
+                                    VILLAGE_16_NEW = ws16.Cells(x, "U").Value
+                                    ADDNO_16_NEW = ws16.Cells(x, "V").Value
+                                    MOONO_16_NEW = ws16.Cells(x, "W").Value
+                                    SOINAM_16_NEW = ws16.Cells(x, "X").Value
+                                    YAEK_16_NEW = ws16.Cells(x, "Y").Value
+                                    THNNAM_16_NEW = ws16.Cells(x, "Z").Value
+                                    TAM_NAME_16_NEW = ws16.Cells(x, "AA").Value
+                                    AMP_NAME_16_NEW = ws16.Cells(x, "AB").Value
+                                    PROV_NAME_16_NEW = ws16.Cells(x, "AC").Value
+                                    POSCOD_16_NEW = ws16.Cells(x, "AD").Value
+                                    TELNO_16_NEW = ws16.Cells(x, "AE").Value
+                                    
+                                    ' OTH FLG
+                                    BUSLOCTYP_16_NEW = ws16.Cells(x, "AF").Value
+                                    PP20REQ = ws16.Cells(x, "AG").Value
+
+                                    ' BRANO =0
+                                    If BRANO_16 = 0 Then
+                                        
+                                        If Not AcroForm.getField("AREAMOV_CHK_BRA0") Is Nothing Then
+                                            AcroForm.getField("AREAMOV_CHK_BRA0").Value = "Yes"
+                                        End If
+                                        
+                                        If MOVINOUT = "I" Then
+                                            AcroForm.getField("SAMAREAMOV_CHK").Value = "Yes"
+                                        Else
+                                            AcroForm.getField("DIFAREAMOV_CHK").Value = "Yes"
+                                        End If
+                                         
+                                        If Not IsEmpty(AREAMOV_D) And Not AcroForm.getField("AREAMOV_DATE.D") Is Nothing Then AcroForm.getField("AREAMOV_DATE.D").Value = AREAMOV_D
+                                        If Not IsEmpty(AREAMOV_M) And Not AcroForm.getField("AREAMOV_DATE.M") Is Nothing Then AcroForm.getField("AREAMOV_DATE.M").Value = AREAMOV_M
+                                        If Not IsEmpty(AREAMOV_Y) And Not AcroForm.getField("AREAMOV_DATE.Y") Is Nothing Then AcroForm.getField("AREAMOV_DATE.Y").Value = AREAMOV_Y
+                                        
+                                        If Not IsEmpty(BLDGNAM_16) And Not AcroForm.getField("AREAMOV_BLDGNAM") Is Nothing Then AcroForm.getField("AREAMOV_BLDGNAM").Value = BLDGNAM_16
+                                        If Not IsEmpty(ROOMNO_16) And Not AcroForm.getField("AREAMOV_ROOMNO") Is Nothing Then AcroForm.getField("AREAMOV_ROOMNO").Value = ROOMNO_16
+                                        If Not IsEmpty(FLOORNO_16) And Not AcroForm.getField("AREAMOV_FLOORNO") Is Nothing Then AcroForm.getField("AREAMOV_FLOORNO").Value = FLOORNO_16
+                                        If Not IsEmpty(VILLAGE_16) And Not AcroForm.getField("AREAMOV_VILLAGE") Is Nothing Then AcroForm.getField("AREAMOV_VILLAGE").Value = VILLAGE_16
+                                        If Not IsEmpty(ADDNO_16) And Not AcroForm.getField("AREAMOV_ADDNO") Is Nothing Then AcroForm.getField("AREAMOV_ADDNO").Value = ADDNO_16
+                                        If Not IsEmpty(MOONO_16) And Not AcroForm.getField("AREAMOV_MOONO") Is Nothing Then AcroForm.getField("AREAMOV_MOONO").Value = MOONO_16
+                                        If Not IsEmpty(SOINAM_16) And Not AcroForm.getField("AREAMOV_SOINAM") Is Nothing Then AcroForm.getField("AREAMOV_SOINAM").Value = SOINAM_16
+                                        If Not IsEmpty(YAEK_16) And Not AcroForm.getField("AREAMOV_YAEK") Is Nothing Then AcroForm.getField("AREAMOV_YAEK").Value = YAEK_16
+                                        If Not IsEmpty(THNNAM_16) And Not AcroForm.getField("AREAMOV_THNNAM") Is Nothing Then AcroForm.getField("AREAMOV_THNNAM").Value = THNNAM_16
+                                        If Not IsEmpty(TAM_NAME_16) And Not AcroForm.getField("AREAMOV_TAM_NAME") Is Nothing Then AcroForm.getField("AREAMOV_TAM_NAME").Value = TAM_NAME_16
+                                        If Not IsEmpty(AMP_NAME_16) And Not AcroForm.getField("AREAMOV_AMP_NAME") Is Nothing Then AcroForm.getField("AREAMOV_AMP_NAME").Value = AMP_NAME_16
+                                        If Not IsEmpty(PROV_NAME_16) And Not AcroForm.getField("AREAMOV_PROV_NAME") Is Nothing Then AcroForm.getField("AREAMOV_PROV_NAME").Value = PROV_NAME_16
+                                        If Not IsEmpty(POSCOD_16) And Not AcroForm.getField("AREAMOV_POSCOD") Is Nothing Then AcroForm.getField("AREAMOV_POSCOD").Value = POSCOD_16
+                                        If Not IsEmpty(TELNO_16) And Not AcroForm.getField("AREAMOV_TELNO") Is Nothing Then AcroForm.getField("AREAMOV_TELNO").Value = TELNO_16
+                                        
+                                        If Not IsEmpty(BLDGNAM_16_NEW) And Not AcroForm.getField("AREAMOV_BLDGNAM_N") Is Nothing Then AcroForm.getField("AREAMOV_BLDGNAM_N").Value = BLDGNAM_16_NEW
+                                        If Not IsEmpty(ROOMNO_16_NEW) And Not AcroForm.getField("AREAMOV_ROOMNO_N") Is Nothing Then AcroForm.getField("AREAMOV_ROOMNO_N").Value = ROOMNO_16_NEW
+                                        If Not IsEmpty(FLOORNO_16_NEW) And Not AcroForm.getField("AREAMOV_FLOORNO_N") Is Nothing Then AcroForm.getField("AREAMOV_FLOORNO_N").Value = FLOORNO_16_NEW
+                                        If Not IsEmpty(VILLAGE_16_NEW) And Not AcroForm.getField("AREAMOV_VILLAGE_N") Is Nothing Then AcroForm.getField("AREAMOV_VILLAGE_N").Value = VILLAGE_16_NEW
+                                        If Not IsEmpty(ADDNO_16_NEW) And Not AcroForm.getField("AREAMOV_ADDNO_N") Is Nothing Then AcroForm.getField("AREAMOV_ADDNO_N").Value = ADDNO_16_NEW
+                                        If Not IsEmpty(MOONO_16_NEW) And Not AcroForm.getField("AREAMOV_MOONO_N") Is Nothing Then AcroForm.getField("AREAMOV_MOONO_N").Value = MOONO_16_NEW
+                                        If Not IsEmpty(SOINAM_16_NEW) And Not AcroForm.getField("AREAMOV_SOINAM_N") Is Nothing Then AcroForm.getField("AREAMOV_SOINAM_N").Value = SOINAM_16_NEW
+                                        If Not IsEmpty(YAEK_16_NEW) And Not AcroForm.getField("AREAMOV_YAEK_N") Is Nothing Then AcroForm.getField("AREAMOV_YAEK_N").Value = YAEK_16_NEW
+                                        If Not IsEmpty(THNNAM_16_NEW) And Not AcroForm.getField("AREAMOV_THNNAM_N") Is Nothing Then AcroForm.getField("AREAMOV_THNNAM_N").Value = THNNAM_16_NEW
+                                        If Not IsEmpty(TAM_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_TAM_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_TAM_NAME_N").Value = TAM_NAME_16_NEW
+                                        If Not IsEmpty(AMP_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_AMP_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_AMP_NAME_N").Value = AMP_NAME_16_NEW
+                                        If Not IsEmpty(PROV_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_PROV_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_PROV_NAME_N").Value = PROV_NAME_16_NEW
+                                        If Not IsEmpty(POSCOD_16_NEW) And Not AcroForm.getField("AREAMOV_POSCOD_N") Is Nothing Then AcroForm.getField("AREAMOV_POSCOD_N").Value = POSCOD_16_NEW
+                                        If Not IsEmpty(TELNO_16_NEW) And Not AcroForm.getField("AREAMOV_TELNO_N") Is Nothing Then AcroForm.getField("AREAMOV_TELNO_N").Value = TELNO_16_NEW
+                                    
+                                    'BRANO <> 0
+                                    Else
+                                    
+                                        If Not AcroForm.getField("AREAMOV_CHK_BRA") Is Nothing Then
+                                            AcroForm.getField("AREAMOV_CHK_BRA").Value = "Yes"
+                                        End If
+                                        
+                                        If MOVINOUT = "I" Then
+                                            AcroForm.getField("SAMAREAMOV_CHK").Value = "Yes"
+                                        Else
+                                            AcroForm.getField("DIFAREAMOV_CHK").Value = "Yes"
+                                        End If
+                                        
+                                        If Not IsEmpty(BRANO_16) And Not AcroForm.getField("AREAMOV_BRANO") Is Nothing Then AcroForm.getField("AREAMOV_BRANO").Value = Format(BRANO_16, "00000")
+                                        If Not IsEmpty(AREAMOV_D) And Not AcroForm.getField("AREAMOV_DATE.D") Is Nothing Then AcroForm.getField("AREAMOV_DATE.D").Value = AREAMOV_D
+                                        If Not IsEmpty(AREAMOV_M) And Not AcroForm.getField("AREAMOV_DATE.M") Is Nothing Then AcroForm.getField("AREAMOV_DATE.M").Value = AREAMOV_M
+                                        If Not IsEmpty(AREAMOV_Y) And Not AcroForm.getField("AREAMOV_DATE.Y") Is Nothing Then AcroForm.getField("AREAMOV_DATE.Y").Value = AREAMOV_Y
+                                        
+                                        If Not IsEmpty(BLDGNAM_16) And Not AcroForm.getField("AREAMOV_BLDGNAM") Is Nothing Then AcroForm.getField("AREAMOV_BLDGNAM").Value = BLDGNAM_16
+                                        If Not IsEmpty(ROOMNO_16) And Not AcroForm.getField("AREAMOV_ROOMNO") Is Nothing Then AcroForm.getField("AREAMOV_ROOMNO").Value = ROOMNO_16
+                                        If Not IsEmpty(FLOORNO_16) And Not AcroForm.getField("AREAMOV_FLOORNO") Is Nothing Then AcroForm.getField("AREAMOV_FLOORNO").Value = FLOORNO_16
+                                        If Not IsEmpty(VILLAGE_16) And Not AcroForm.getField("AREAMOV_VILLAGE") Is Nothing Then AcroForm.getField("AREAMOV_VILLAGE").Value = VILLAGE_16
+                                        If Not IsEmpty(ADDNO_16) And Not AcroForm.getField("AREAMOV_ADDNO") Is Nothing Then AcroForm.getField("AREAMOV_ADDNO").Value = ADDNO_16
+                                        If Not IsEmpty(MOONO_16) And Not AcroForm.getField("AREAMOV_MOONO") Is Nothing Then AcroForm.getField("AREAMOV_MOONO").Value = MOONO_16
+                                        If Not IsEmpty(SOINAM_16) And Not AcroForm.getField("AREAMOV_SOINAM") Is Nothing Then AcroForm.getField("AREAMOV_SOINAM").Value = SOINAM_16
+                                        If Not IsEmpty(YAEK_16) And Not AcroForm.getField("AREAMOV_YAEK") Is Nothing Then AcroForm.getField("AREAMOV_YAEK").Value = YAEK_16
+                                        If Not IsEmpty(THNNAM_16) And Not AcroForm.getField("AREAMOV_THNNAM") Is Nothing Then AcroForm.getField("AREAMOV_THNNAM").Value = THNNAM_16
+                                        If Not IsEmpty(TAM_NAME_16) And Not AcroForm.getField("AREAMOV_TAM_NAME") Is Nothing Then AcroForm.getField("AREAMOV_TAM_NAME").Value = TAM_NAME_16
+                                        If Not IsEmpty(AMP_NAME_16) And Not AcroForm.getField("AREAMOV_AMP_NAME") Is Nothing Then AcroForm.getField("AREAMOV_AMP_NAME").Value = AMP_NAME_16
+                                        If Not IsEmpty(PROV_NAME_16) And Not AcroForm.getField("AREAMOV_PROV_NAME") Is Nothing Then AcroForm.getField("AREAMOV_PROV_NAME").Value = PROV_NAME_16
+                                        If Not IsEmpty(POSCOD_16) And Not AcroForm.getField("AREAMOV_POSCOD") Is Nothing Then AcroForm.getField("AREAMOV_POSCOD").Value = POSCOD_16
+                                        If Not IsEmpty(TELNO_16) And Not AcroForm.getField("AREAMOV_TELNO") Is Nothing Then AcroForm.getField("AREAMOV_TELNO").Value = TELNO_16
+                                        
+                                        If Not IsEmpty(BLDGNAM_16_NEW) And Not AcroForm.getField("AREAMOV_BLDGNAM_N") Is Nothing Then AcroForm.getField("AREAMOV_BLDGNAM_N").Value = BLDGNAM_16_NEW
+                                        If Not IsEmpty(ROOMNO_16_NEW) And Not AcroForm.getField("AREAMOV_ROOMNO_N") Is Nothing Then AcroForm.getField("AREAMOV_ROOMNO_N").Value = ROOMNO_16_NEW
+                                        If Not IsEmpty(FLOORNO_16_NEW) And Not AcroForm.getField("AREAMOV_FLOORNO_N") Is Nothing Then AcroForm.getField("AREAMOV_FLOORNO_N").Value = FLOORNO_16_NEW
+                                        If Not IsEmpty(VILLAGE_16_NEW) And Not AcroForm.getField("AREAMOV_VILLAGE_N") Is Nothing Then AcroForm.getField("AREAMOV_VILLAGE_N").Value = VILLAGE_16_NEW
+                                        If Not IsEmpty(ADDNO_16_NEW) And Not AcroForm.getField("AREAMOV_ADDNO_N") Is Nothing Then AcroForm.getField("AREAMOV_ADDNO_N").Value = ADDNO_16_NEW
+                                        If Not IsEmpty(MOONO_16_NEW) And Not AcroForm.getField("AREAMOV_MOONO_N") Is Nothing Then AcroForm.getField("AREAMOV_MOONO_N").Value = MOONO_16_NEW
+                                        If Not IsEmpty(SOINAM_16_NEW) And Not AcroForm.getField("AREAMOV_SOINAM_N") Is Nothing Then AcroForm.getField("AREAMOV_SOINAM_N").Value = SOINAM_16_NEW
+                                        If Not IsEmpty(YAEK_16_NEW) And Not AcroForm.getField("AREAMOV_YAEK_N") Is Nothing Then AcroForm.getField("AREAMOV_YAEK_N").Value = YAEK_16_NEW
+                                        If Not IsEmpty(THNNAM_16_NEW) And Not AcroForm.getField("AREAMOV_THNNAM_N") Is Nothing Then AcroForm.getField("AREAMOV_THNNAM_N").Value = THNNAM_16_NEW
+                                        If Not IsEmpty(TAM_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_TAM_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_TAM_NAME_N").Value = TAM_NAME_16_NEW
+                                        If Not IsEmpty(AMP_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_AMP_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_AMP_NAME_N").Value = AMP_NAME_16_NEW
+                                        If Not IsEmpty(PROV_NAME_16_NEW) And Not AcroForm.getField("AREAMOV_PROV_NAME_N") Is Nothing Then AcroForm.getField("AREAMOV_PROV_NAME_N").Value = PROV_NAME_16_NEW
+                                        If Not IsEmpty(POSCOD_16_NEW) And Not AcroForm.getField("AREAMOV_POSCOD_N") Is Nothing Then AcroForm.getField("AREAMOV_POSCOD_N").Value = POSCOD_16_NEW
+                                        If Not IsEmpty(TELNO_16_NEW) And Not AcroForm.getField("AREAMOV_TELNO_N") Is Nothing Then AcroForm.getField("AREAMOV_TELNO_N").Value = TELNO_16_NEW
+                                        End If
+                                        
+                                        If BUSLOCTYP_16_NEW >= "01" And BRA_BUSLOCTYP <= "06" Then
+                                        AcroForm.getField("BUSLOCTYP_0" & CInt(BUSLOCTYP_16_NEW)).Value = "Yes"
+                                        End If
+                                        
+                                        If PP20REQ = 1 Then
+                                        AcroForm.getField("MOVPP20REC_CHK").Value = "Yes"
+                                        End If
+
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next x
+                            
+                ' 04 CMALATRF
+                
+                ' Process data from Sheet2 (DIS)
+                Dim CLSAUDPIN As String, CLSAUDNAM As String, CLSAUDTELNO As String
+                Dim UPAINCAMO_DIS As String, ACCREBAMO_DIS As String, OTHASTAMO_DIS As String, ACCPABAMO_DIS As String
+                
+                    For j = 2 To lastRow2
+                        ' Check if the NID in Sheet2 matches the current NID being processed
+                        If ws2.Cells(j, "A").Value = NID Then
+                        
+                                If Not AcroForm.getField("CLAMATRF_CHK") Is Nothing Then
+                                    AcroForm.getField("CLAMATRF_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Retrieve data from Sheet2 for DIS fields
+                            CLSAUDPIN = ws2.Cells(j, "B").Value
+                            CLSAUDNAM = ws2.Cells(j, "C").Value & " " & ws2.Cells(j, "D").Value & " " & ws2.Cells(j, "E") & " " & ws2.Cells(j, "F")
+                            CLSAUDTELNO = ws2.Cells(j, "G").Value
+                            UPAINCAMO_DIS = ws2.Cells(j, "H").Value
+                            ACCREBAMO_DIS = ws2.Cells(j, "I").Value
+                            OTHASTAMO_DIS = ws2.Cells(j, "J").Value
+                            ACCPABAMO_DIS = ws2.Cells(j, "K").Value
+                                        
+                            ' Check if NID exists in ws2 and mark the checkbox "DIS_CHK"
+                            If Not IsEmpty(ws2.Cells(j, "A").Value) Then
+                                If Not AcroForm.getField("DIS_CHK") Is Nothing Then
+                                    AcroForm.getField("DIS_CHK").Value = "Yes" ' Tick the checkbox if NID is found
+                                End If
+                            End If
+                
+                            ' Fill the AUDITOR details in the PDF
+                            If Not IsEmpty(CLSAUDNAM) And Not AcroForm.getField("CLSAUDNAM") Is Nothing Then AcroForm.getField("CLSAUDNAM").Value = CLSAUDNAM
+                            If Not IsEmpty(CLSAUDPIN) And Not AcroForm.getField("CLSAUDPIN") Is Nothing Then AcroForm.getField("CLSAUDPIN").Value = CLSAUDPIN
+                            If Not IsEmpty(CLSAUDTELNO) And Not AcroForm.getField("CLSAUDTELNO") Is Nothing Then AcroForm.getField("CLSAUDTELNO").Value = CLSAUDTELNO
+                            
+                            If Not IsEmpty(UPAINCAMO_DIS) And Not AcroForm.getField("UPAINCAMO") Is Nothing Then AcroForm.getField("UPAINCAMO").Value = Format(UPAINCAMO_DIS, "#,##0.00")
+                            If Not IsEmpty(ACCREBAMO_DIS) And Not AcroForm.getField("ACCREBAMO") Is Nothing Then AcroForm.getField("ACCREBAMO").Value = Format(ACCREBAMO_DIS, "#,##0.00")
+                            If Not IsEmpty(OTHASTAMO_DIS) And Not AcroForm.getField("OTHASTAMO") Is Nothing Then AcroForm.getField("OTHASTAMO").Value = Format(OTHASTAMO_DIS, "#,##0.00")
+                            If Not IsEmpty(ACCPABAMO_DIS) And Not AcroForm.getField("ACCPABAMO") Is Nothing Then AcroForm.getField("ACCPABAMO").Value = Format(ACCPABAMO_DIS, "#,##0.00")
+                            
+                            ' Stop the loop once the matching NID is found and processed
+                            Exit For
+                        End If
+                    Next j
+                
+                ' Process data from Sheet3 (AMA)
+                Dim NUMNIDAMA As String, AMANID As String, AMANAM As String, NEWAMANID As String, NEWAMANAM As String
+                Dim UPAINCAMO_AMA As String, ACCREBAMO_AMA As String, OTHASTAMO_AMA As String, ACCPABAMO_AMA As String
+
+                    For k = 2 To lastRow3
+                        ' Check if the NID in Sheet3 matches the current NID being processed from Sheet1
+                        If ws3.Cells(k, "A").Value = NID Then
+                                
+                                If Not AcroForm.getField("CLAMATRF_CHK") Is Nothing Then
+                                    AcroForm.getField("CLAMATRF_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Retrieve data from Sheet3 for AMA fields
+                            NUMNIDAMA = ws3.Cells(k, "B").Value
+                            AMANID = ws3.Cells(k, "C").Value
+                            AMANAM = ws3.Cells(k, "D").Value & " " & ws3.Cells(k, "E").Value
+                            NEWAMANID = ws3.Cells(k, "F").Value
+                            NEWAMANAM = ws3.Cells(k, "G").Value & " " & ws3.Cells(k, "H").Value
+                            UPAINCAMO_AMA = ws3.Cells(k, "I").Value
+                            ACCREBAMO_AMA = ws3.Cells(k, "J").Value
+                            OTHASTAMO_AMA = ws3.Cells(k, "K").Value
+                            ACCPABAMO_AMA = ws3.Cells(k, "L").Value
+                    
+                            ' Check if NID exists in ws3 and mark the checkbox "AMA_CHK"
+                            If Not IsEmpty(ws3.Cells(k, "A").Value) Then
+                                If Not AcroForm.getField("AMA_CHK") Is Nothing Then
+                                    AcroForm.getField("AMA_CHK").Value = "Yes" ' Tick the checkbox if NID is found
+                                End If
+                            End If
+                            
+                            ' Fill the remaining AMA fields in the PDF
+                            If Not IsEmpty(NUMNIDAMA) And Not AcroForm.getField("NUMNIDAMA") Is Nothing Then AcroForm.getField("NUMNIDAMA").Value = NUMNIDAMA
+                            If Not IsEmpty(AMANAM) And Not AcroForm.getField("AMANAM") Is Nothing Then AcroForm.getField("AMANAM").Value = AMANAM
+                            If Not IsEmpty(AMANID) And Not AcroForm.getField("AMANID") Is Nothing Then AcroForm.getField("AMANID").Value = AMANID
+                            If Not IsEmpty(NEWAMANID) And Not AcroForm.getField("NEWAMANID") Is Nothing Then AcroForm.getField("NEWAMANID").Value = NEWAMANID
+                            If Not IsEmpty(NEWAMANAM) And Not AcroForm.getField("NEWAMANAM") Is Nothing Then AcroForm.getField("NEWAMANAM").Value = NEWAMANAM
+                            
+                            If Not IsEmpty(UPAINCAMO_AMA) And Not AcroForm.getField("UPAINCAMO") Is Nothing Then AcroForm.getField("UPAINCAMO").Value = Format(UPAINCAMO_AMA, "#,##0.00")
+                            If Not IsEmpty(ACCREBAMO_AMA) And Not AcroForm.getField("ACCREBAMO") Is Nothing Then AcroForm.getField("ACCREBAMO").Value = Format(ACCREBAMO_AMA, "#,##0.00")
+                            If Not IsEmpty(OTHASTAMO_AMA) And Not AcroForm.getField("OTHASTAMO") Is Nothing Then AcroForm.getField("OTHASTAMO").Value = Format(OTHASTAMO_AMA, "#,##0.00")
+                            If Not IsEmpty(ACCPABAMO_AMA) And Not AcroForm.getField("ACCPABAMO") Is Nothing Then AcroForm.getField("ACCPABAMO").Value = Format(ACCPABAMO_AMA, "#,##0.00")
+                            
+                            ' Stop the loop once the matching NID is found and processed
+                            Exit For
+                        End If
+                    Next k
+                    
+            ' Process data from Sheet4 (TRF)
+            Dim TRF_CHK As String, TRFNAM As String, TRFNID As String, UPAINCAMO_TRF As String
+            Dim ACCREBAMO_TRF As String, OTHASTAMO_TRF As String, ACCPABAMO_TRF As String
+
+                    For l = 2 To lastRow4
+                        ' Check if the NID in ws4 matches the current NID
+                        If ws4.Cells(l, "A").Value = NID Then
+                        
+                                If Not AcroForm.getField("CLAMATRF_CHK") Is Nothing Then
+                                    AcroForm.getField("CLAMATRF_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Assign values from Sheet4 to variables
+                            TRF_CHK = ws4.Cells(l, "B").Value
+                            TRFNAM = ws4.Cells(l, "D").Value & " " & ws4.Cells(l, "E").Value
+                            TRFNID = ws4.Cells(l, "C").Value
+                            UPAINCAMO_TRF = ws4.Cells(l, "F").Value
+                            ACCREBAMO_TRF = ws4.Cells(l, "G").Value
+                            OTHASTAMO_TRF = ws4.Cells(l, "H").Value
+                            ACCPABAMO_TRF = ws4.Cells(l, "I").Value
+                    
+                            ' Check if the field in ws4 is not empty before filling the form field
+                            If Not IsEmpty(ws4.Cells(l, "A").Value) Then
+                                ' If the TRF_CHK checkbox field exists in the PDF, check the box
+                                If Not AcroForm.getField("TRF_CHK") Is Nothing Then
+                                    AcroForm.getField("TRF_CHK").Value = "Yes" ' Tick the checkbox in the PDF
+                                End If
+                            End If
+                    
+                            ' Check if TRF_CHK is "T" or "F" and fill the appropriate checkbox in the form
+                            If TRF_CHK = "T" Then
+                                ' If the field for "TRF_CHK_T" exists, check the box
+                                If Not AcroForm.getField("TRF_CHK_T") Is Nothing Then
+                                    AcroForm.getField("TRF_CHK_T").Value = "Yes"
+                                End If
+                            ElseIf TRF_CHK = "F" Then
+                                ' If the field for "TRF_CHK_F" exists, check the box
+                                If Not AcroForm.getField("TRF_CHK_F") Is Nothing Then
+                                    AcroForm.getField("TRF_CHK_F").Value = "Yes"
+                                End If
+                            End If
+                    
+                            ' Fill in the transfer name if it's not empty and the form field exists
+                            If Not IsEmpty(TRFNAM) And Not AcroForm.getField("TRFNAM") Is Nothing Then AcroForm.getField("TRFNAM").Value = TRFNAM
+                            ' Fill in the transfer NID if it's not empty and the form field exists
+                            If Not IsEmpty(TRFNID) And Not AcroForm.getField("TRFNID") Is Nothing Then AcroForm.getField("TRFNID").Value = TRFNID
+                            
+                            If Not IsEmpty(UPAINCAMO_TRF) And Not AcroForm.getField("UPAINCAMO") Is Nothing Then AcroForm.getField("UPAINCAMO").Value = Format(UPAINCAMO_TRF, "#,##0.00")
+                            If Not IsEmpty(ACCREBAMO_TRF) And Not AcroForm.getField("ACCREBAMO") Is Nothing Then AcroForm.getField("ACCREBAMO").Value = Format(ACCREBAMO_TRF, "#,##0.00")
+                            If Not IsEmpty(OTHASTAMO_TRF) And Not AcroForm.getField("OTHASTAMO") Is Nothing Then AcroForm.getField("OTHASTAMO").Value = Format(OTHASTAMO_TRF, "#,##0.00")
+                            If Not IsEmpty(ACCPABAMO_TRF) And Not AcroForm.getField("ACCPABAMO") Is Nothing Then AcroForm.getField("ACCPABAMO").Value = Format(ACCPABAMO_TRF, "#,##0.00")
+                    
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next l
+            
+            ' Process data from (PARTRF)
+            Dim PARTRF_CHK As String, PARTRFNAM As String, PARTRFNID As String
+            
+                    For m = 2 To lastRow5
+                        ' Check if the NID in ws4 matches the current NID
+                        If ws5.Cells(m, "A").Value = NID Then
+
+                                If Not AcroForm.getField("PARTRFCOD_CHK") Is Nothing Then
+                                    AcroForm.getField("PARTRFCOD_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Assign values
+                            PARTRF_CHK = ws5.Cells(m, "B").Value
+                            PARTRFNAM = ws5.Cells(m, "D").Value & " " & ws5.Cells(m, "E").Value
+                            PARTRFNID = ws5.Cells(m, "C").Value
+
+                            ' Check if PARTRF_CHK is "T" or "F" and fill the appropriate checkbox in the form
+                            If PARTRF_CHK = "T" Then
+                                ' If the field for "PARTRF_CHK_T" exists, check the box
+                                If Not AcroForm.getField("PARTRF_CHK_T") Is Nothing Then
+                                    AcroForm.getField("PARTRF_CHK_T").Value = "Yes"
+                                End If
+                            ElseIf PARTRF_CHK = "F" Then
+                                ' If the field for "PARTRF_CHK_F" exists, check the box
+                                If Not AcroForm.getField("PARTRF_CHK_F") Is Nothing Then
+                                    AcroForm.getField("PARTRF_CHK_F").Value = "Yes"
+                                End If
+                            End If
+                            
+                            If Not IsEmpty(PARTRFNAM) And Not AcroForm.getField("PARTRFNAM") Is Nothing Then AcroForm.getField("PARTRFNAM").Value = PARTRFNAM
+                            If Not IsEmpty(PARTRFNID) And Not AcroForm.getField("PARTRFNID") Is Nothing Then AcroForm.getField("PARTRFNID").Value = PARTRFNID
+                            
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next m
+            
+            ' Process data from Sheet6 (BUSTYPCHG)
+            Dim BUSTYPCHG_1 As String, BUSTYPCHG_2 As String, BUSTYPCHG_3 As String, BUSTYPCHG_4 As String
+            Dim BUSTYPCHG_5 As String, BUSTYPCHG_6 As String, BUSTYPCHG_7 As String, BUSTYPCHG_8 As String
+            Dim BUSTYPCHG_9 As String, BUSTYPCHG_10 As String
+            
+                    For n = 2 To lastRow6
+                        ' Check if the NID in ws4 matches the current NID
+                        If ws6.Cells(n, "A").Value = NID Then
+                        
+                                If Not AcroForm.getField("BUSTYPCHG_CHK") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_CHK").Value = "Yes"
+                                End If
+                                
+                        ' Assigning values from the worksheet to the variables as strings
+                            BUSTYPCHG_1 = CStr(ws6.Cells(n, "B").Value)
+                            BUSTYPCHG_2 = CStr(ws6.Cells(n, "C").Value)
+                            BUSTYPCHG_3 = CStr(ws6.Cells(n, "D").Value)
+                            BUSTYPCHG_4 = CStr(ws6.Cells(n, "E").Value)
+                            BUSTYPCHG_5 = CStr(ws6.Cells(n, "F").Value)
+                            BUSTYPCHG_6 = CStr(ws6.Cells(n, "G").Value)
+                            BUSTYPCHG_7 = CStr(ws6.Cells(n, "H").Value)
+                            BUSTYPCHG_8 = CStr(ws6.Cells(n, "I").Value)
+                            BUSTYPCHG_9 = CStr(ws6.Cells(n, "J").Value)
+                            BUSTYPCHG_10 = CStr(ws6.Cells(n, "K").Value)
+                            BUSTYPCHG_10 = CStr(ws6.Cells(n, "K").Value)
+                            BUSTYPCHG_10 = CStr(ws6.Cells(n, "K").Value)
+                            BUSTYPCHG_10 = CStr(ws6.Cells(n, "K").Value)
+                            
+                            ' Check and update the form fields based on the values in the variables for BUSTYPCHG_1 to BUSTYPCHG_10
+                            
+                            ' BUSTYPCHG_1
+                            If BUSTYPCHG_1 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_1") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_1").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_1 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_1") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_1").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_2
+                            If BUSTYPCHG_2 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_2") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_2").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_2 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_2") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_2").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_3
+                            If BUSTYPCHG_3 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_3") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_3").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_3 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_3") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_3").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_4
+                            If BUSTYPCHG_4 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_4") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_4").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_4 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_4") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_4").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_5
+                            If BUSTYPCHG_5 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_5") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_5").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_5 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_5") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_5").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_6
+                            If BUSTYPCHG_6 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_6") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_6").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_6 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_6") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_6").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_7
+                            If BUSTYPCHG_7 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_7") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_7").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_7 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_7") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_7").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_8
+                            If BUSTYPCHG_8 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_8") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_8").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_8 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_8") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_8").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_9
+                            If BUSTYPCHG_9 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_9") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_9").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_9 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_9") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_9").Value = "Yes"
+                                End If
+                            End If
+                            
+                            ' BUSTYPCHG_10
+                            If BUSTYPCHG_10 = "I" Then
+                                If Not AcroForm.getField("BUSTYPCHG_INC_10") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_INC_10").Value = "Yes"
+                                End If
+                            ElseIf BUSTYPCHG_10 = "D" Then
+                                If Not AcroForm.getField("BUSTYPCHG_DEC_10") Is Nothing Then
+                                    AcroForm.getField("BUSTYPCHG_DEC_10").Value = "Yes"
+                                End If
+                            End If
+
+                    
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next n
+                    
+        ' Process data from Sheet7 (BRANIC)
+        Dim NUMBRAINC As String, BRAINC_DATE_D As String, BRAINC_DATE_M As String, BRAINC_DATE_Y As String
+        Dim BRANIC_BRANO As String, BRAINCNAM As String, BRAINC_BLDGNAM As String, BRANIC_ROOMNO As String
+        Dim BRANIC_FLOORNO As String, BRANIC_VILLAGE As String, BRANIC_ADDNO As String, BRANIC_MOONO As String
+        Dim BRANIC_SOINAM As String, BRANIC_YAEK As String, BRANIC_THNNAM As String, BRANIC_TAM_NAME As String
+        Dim BRANIC_AMP_NAME As String, BRANIC_PROV_NAME As String, BRANIC_POSCOD As String, BRANIC_TELNO As String
+        Dim BRANIC_EMAIL As String, BRANIC_BUSLOCTYP As String
+
+                    For o = 2 To lastRow7
+                        ' Check if the NID in ws4 matches the current NID
+                        If ws7.Cells(o, "A").Value = NID Then
+                        
+                                If Not AcroForm.getField("BRAINC_CHK") Is Nothing Then
+                                    AcroForm.getField("BRAINC_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Assign values from Sheet7 to variables
+                            NUMBRAINC = ws7.Cells(o, "B").Value
+                            'BRAINC_DATE_D = ws7.Cells(o, "C").Value
+                            'BRAINC_DATE_M = ws7.Cells(o, "D").Value
+                            'BRAINC_DATE_Y = ws7.Cells(o, "E").Value
+                            BRANIC_BRANO = ws7.Cells(o, "F").Value
+                            BRAINCNAM = ws7.Cells(o, "G").Value & " " & ws7.Cells(o, "H")
+                            BRAINC_BLDGNAM = ws7.Cells(o, "I").Value
+                            BRANIC_ROOMNO = ws7.Cells(o, "J").Value
+                            BRANIC_FLOORNO = ws7.Cells(o, "K").Value
+                            BRANIC_VILLAGE = ws7.Cells(o, "L").Value
+                            BRANIC_ADDNO = ws7.Cells(o, "M").Value
+                            BRANIC_MOONO = ws7.Cells(o, "N").Value
+                            BRANIC_SOINAM = ws7.Cells(o, "O").Value
+                            BRANIC_YAEK = ws7.Cells(o, "P").Value
+                            BRANIC_THNNAM = ws7.Cells(o, "Q").Value
+                            BRANIC_TAM_NAME = ws7.Cells(o, "S").Value
+                            BRANIC_AMP_NAME = ws7.Cells(o, "U").Value
+                            BRANIC_PROV_NAME = ws7.Cells(o, "W").Value
+                            BRANIC_POSCOD = ws7.Cells(o, "X").Value
+                            BRANIC_TELNO = ws7.Cells(o, "Y").Value
+                            BRANIC_EMAIL = ws7.Cells(o, "Z").Value
+                            BRANIC_BUSLOCTYP = ws7.Cells(o, "AA").Value
+ 
+                            ' Fill in the BRANIC date fields in the form
+                            If Not IsEmpty(NUMBRAINC) And Not AcroForm.getField("NUMBRAINC") Is Nothing Then AcroForm.getField("NUMBRAINC").Value = NUMBRAINC
+                            'If Not IsEmpty(BRAINC_DATE_D) And Not AcroForm.getField("BRAINC_DATE_D") Is Nothing Then AcroForm.getField("BRAINC_DATE_D").Value = BRAINC_DATE_D
+                            'If Not IsEmpty(BRAINC_DATE_M) And Not AcroForm.getField("BRAINC_DATE_M") Is Nothing Then AcroForm.getField("BRAINC_DATE_M").Value = BRAINC_DATE_M
+                            'If Not IsEmpty(BRAINC_DATE_Y) And Not AcroForm.getField("BRAINC_DATE_Y") Is Nothing Then AcroForm.getField("BRAINC_DATE_Y").Value = BRAINC_DATE_Y
+                            
+                            If Not IsEmpty(BRANIC_BRANO) And Not AcroForm.getField("BRANIC_BRANO") Is Nothing Then
+                                ' Format BRANIC_BRANO to always show as 5 digits (e.g., 00001, 00013)
+                                AcroForm.getField("BRANIC_BRANO").Value = Format(BRANIC_BRANO, "00000")
+                            
+                            End If
+                            If Not IsEmpty(BRAINCNAM) And Not AcroForm.getField("BRAINCNAM") Is Nothing Then AcroForm.getField("BRAINCNAM").Value = BRAINCNAM
+                            If Not IsEmpty(BRAINC_BLDGNAM) And Not AcroForm.getField("BRAINC_BLDGNAM") Is Nothing Then AcroForm.getField("BRAINC_BLDGNAM").Value = BRAINC_BLDGNAM
+                            If Not IsEmpty(BRANIC_ROOMNO) And Not AcroForm.getField("BRAINC_ROOMNO") Is Nothing Then AcroForm.getField("BRAINC_ROOMNO").Value = BRANIC_ROOMNO
+                            If Not IsEmpty(BRANIC_FLOORNO) And Not AcroForm.getField("BRAINC_FLOORNO") Is Nothing Then AcroForm.getField("BRAINC_FLOORNO").Value = BRANIC_FLOORNO
+                            If Not IsEmpty(BRANIC_VILLAGE) And Not AcroForm.getField("BRAINC_VILLAGE") Is Nothing Then AcroForm.getField("BRAINC_VILLAGE").Value = BRANIC_VILLAGE
+                            If Not IsEmpty(BRANIC_ADDNO) And Not AcroForm.getField("BRAINC_ADDNO") Is Nothing Then AcroForm.getField("BRAINC_ADDNO").Value = BRANIC_ADDNO
+                            If Not IsEmpty(BRANIC_MOONO) And Not AcroForm.getField("BRAINC_MOONO") Is Nothing Then AcroForm.getField("BRAINC_MOONO").Value = BRANIC_MOONO
+                            If Not IsEmpty(BRANIC_SOINAM) And Not AcroForm.getField("BRAINC_SOINAM") Is Nothing Then AcroForm.getField("BRAINC_SOINAM").Value = BRANIC_SOINAM
+                            If Not IsEmpty(BRANIC_YAEK) And Not AcroForm.getField("BRAINC_YAEK") Is Nothing Then AcroForm.getField("BRAINC_YAEK").Value = BRANIC_YAEK
+                            If Not IsEmpty(BRANIC_THNNAM) And Not AcroForm.getField("BRAINC_THNNAM") Is Nothing Then AcroForm.getField("BRAINC_THNNAM").Value = BRANIC_THNNAM
+                            If Not IsEmpty(BRANIC_TAM_NAME) And Not AcroForm.getField("BRAINC_TAM_NAME") Is Nothing Then AcroForm.getField("BRAINC_TAM_NAME").Value = BRANIC_TAM_NAME
+                            If Not IsEmpty(BRANIC_AMP_NAME) And Not AcroForm.getField("BRAINC_AMP_NAME") Is Nothing Then AcroForm.getField("BRAINC_AMP_NAME").Value = BRANIC_AMP_NAME
+                            If Not IsEmpty(BRANIC_PROV_NAME) And Not AcroForm.getField("BRAINC_PROV_NAME") Is Nothing Then AcroForm.getField("BRAINC_PROV_NAME").Value = BRANIC_PROV_NAME
+                            If Not IsEmpty(BRANIC_POSCOD) And Not AcroForm.getField("BRAINC_POSCOD") Is Nothing Then AcroForm.getField("BRAINC_POSCOD").Value = BRANIC_POSCOD
+                            If Not IsEmpty(BRANIC_TELNO) And Not AcroForm.getField("BRAINC_TELNO") Is Nothing Then AcroForm.getField("BRAINC_TELNO").Value = BRANIC_TELNO
+                            If Not IsEmpty(BRANIC_EMAIL) And Not AcroForm.getField("BRAINC_EMAIL") Is Nothing Then AcroForm.getField("BRAINC_EMAIL").Value = BRANIC_EMAIL
+                            
+                            If BRANIC_BUSLOCTYP = "01" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_01") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_01").Value = "Yes"
+                                End If
+                            ElseIf BRANIC_BUSLOCTYP = "01" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_01") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_01").Value = "Yes"
+                                End If
+                            End If
+                            
+                            If BRANIC_BUSLOCTYP = "02" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_02") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_02").Value = "Yes"
+                                End If
+                            ElseIf BRANIC_BUSLOCTYP = "02" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_02") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_02").Value = "Yes"
+                                End If
+                            End If
+                            
+                            If BRANIC_BUSLOCTYP = "03" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_03") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_03").Value = "Yes"
+                                End If
+                            ElseIf BRANIC_BUSLOCTYP = "03" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_03") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_03").Value = "Yes"
+                                End If
+                            End If
+                            
+                            If BRANIC_BUSLOCTYP = "04" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_04") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_04").Value = "Yes"
+                                End If
+                            ElseIf BRANIC_BUSLOCTYP = "04" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_04") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_04").Value = "Yes"
+                                End If
+                            End If
+                            
+                            If BRANIC_BUSLOCTYP = "05" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_05") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_05").Value = "Yes"
+                                End If
+                            ElseIf BRANIC_BUSLOCTYP = "05" Then
+                                If Not AcroForm.getField("BRAINC_BUSLOCTYP_05") Is Nothing Then
+                                    AcroForm.getField("BRAINC_BUSLOCTYP_05").Value = "Yes"
+                                End If
+                            End If
+                            
+                    
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next o
+                    
+        ' Process data from Sheet8 (BRADEC)
+        Dim NUMBRADEC As String, BRADEC_DATE_D As String, BRADEC_DATE_M As String, BRADEC_DATE_Y As String
+        Dim BRADEC_BRANO As String, BRADEC_BLDGNAM As String, BRADEC_ROOMNO As String, BRADEC_FLOORNO As String
+        Dim BRADEC_VILLAGE As String, BRADEC_ADDNO As String, BRADEC_MOONO As String, BRADEC_SOINAM As String
+        Dim BRADEC_YAEK As String, BRADEC_THNNAM As String, BRADEC_TAM_NAME As String, BRADEC_AMP_NAME As String
+        Dim BRADEC_PROV_NAME As String, BRADEC_POSCOD As String
+
+                    For p = 2 To lastRow8
+                        ' Check if the NID in ws4 matches the current NID
+                        If ws8.Cells(p, "A").Value = NID Then
+                        
+                                If Not AcroForm.getField("BRADEC_CHK") Is Nothing Then
+                                    AcroForm.getField("BRADEC_CHK").Value = "Yes"
+                                End If
+                                
+                            ' Assign values from Sheet7 to variables
+                            NUMBRADEC = ws8.Cells(p, "B").Value
+                            'BRADEC_DATE_D = ws8.Cells(p, "C").Value
+                            'BRADEC_DATE_M = ws8.Cells(p, "D").Value
+                            'BRADEC_DATE_Y = ws8.Cells(p, "E").Value
+                            BRADEC_BRANO = ws8.Cells(p, "F").Value
+                            BRADEC_BLDGNAM = ws8.Cells(p, "I").Value
+                            BRADEC_ROOMNO = ws8.Cells(p, "J").Value
+                            BRADEC_FLOORNO = ws8.Cells(p, "K").Value
+                            BRADEC_VILLAGE = ws8.Cells(p, "L").Value
+                            BRADEC_ADDNO = ws8.Cells(p, "M").Value
+                            BRADEC_MOONO = ws8.Cells(p, "N").Value
+                            BRADEC_SOINAM = ws8.Cells(p, "O").Value
+                            BRADEC_YAEK = ws8.Cells(p, "P").Value
+                            BRADEC_THNNAM = ws8.Cells(p, "Q").Value
+                            BRADEC_TAM_NAME = ws8.Cells(p, "S").Value
+                            BRADEC_AMP_NAME = ws8.Cells(p, "U").Value
+                            BRADEC_PROV_NAME = ws8.Cells(p, "W").Value
+                            BRADEC_POSCOD = ws8.Cells(p, "X").Value
+ 
+                            ' Fill in the BRANIC date fields in the form
+                            If Not IsEmpty(NUMBRADEC) And Not AcroForm.getField("NUMBRADEC") Is Nothing Then AcroForm.getField("NUMBRADEC").Value = NUMBRADEC
+                            'If Not IsEmpty(BRADEC_DATE_D) And Not AcroForm.getField("BRADEC_DATE.D") Is Nothing Then AcroForm.getField("BRADEC_DATE.D").Value = BRADEC_DATE_D
+                            'If Not IsEmpty(BRADEC_DATE_M) And Not AcroForm.getField("BRADEC_DATE.M") Is Nothing Then AcroForm.getField("BRADEC_DATE.M").Value = BRADEC_DATE_M
+                            'If Not IsEmpty(BRADEC_DATE_Y) And Not AcroForm.getField("BRADEC_DATE.Y") Is Nothing Then AcroForm.getField("BRADEC_DATE.Y").Value = BRADEC_DATE_Y
+                            
+                            If Not IsEmpty(BRADEC_BRANO) And Not AcroForm.getField("BRADEC_BRANO") Is Nothing Then
+                                ' Format BRANIC_BRANO to always show as 5 digits (e.g., 00001, 00013)
+                                AcroForm.getField("BRADEC_BRANO").Value = Format(BRADEC_BRANO, "00000")
+                            
+                            End If
+                            If Not IsEmpty(BRADEC_BLDGNAM) And Not AcroForm.getField("BRADEC_BLDGNAM") Is Nothing Then AcroForm.getField("BRADEC_BLDGNAM").Value = BRADEC_BLDGNAM
+                            If Not IsEmpty(BRADEC_ROOMNO) And Not AcroForm.getField("BRADEC_ROOMNO") Is Nothing Then AcroForm.getField("BRADEC_ROOMNO").Value = BRADEC_ROOMNO
+                            If Not IsEmpty(BRADEC_FLOORNO) And Not AcroForm.getField("BRADEC_FLOORNO") Is Nothing Then AcroForm.getField("BRADEC_FLOORNO").Value = BRADEC_FLOORNO
+                            If Not IsEmpty(BRADEC_VILLAGE) And Not AcroForm.getField("BRADEC_VILLAGE") Is Nothing Then AcroForm.getField("BRADEC_VILLAGE").Value = BRADEC_VILLAGE
+                            If Not IsEmpty(BRADEC_ADDNO) And Not AcroForm.getField("BRADEC_ADDNO") Is Nothing Then AcroForm.getField("BRADEC_ADDNO").Value = BRADEC_ADDNO
+                            If Not IsEmpty(BRADEC_MOONO) And Not AcroForm.getField("BRADEC_MOONO") Is Nothing Then AcroForm.getField("BRADEC_MOONO").Value = BRADEC_MOONO
+                            If Not IsEmpty(BRADEC_SOINAM) And Not AcroForm.getField("BRADEC_SOINAM") Is Nothing Then AcroForm.getField("BRADEC_SOINAM").Value = BRADEC_SOINAM
+                            If Not IsEmpty(BRADEC_YAEK) And Not AcroForm.getField("BRADEC_YAEK") Is Nothing Then AcroForm.getField("BRADEC_YAEK").Value = BRADEC_YAEK
+                            If Not IsEmpty(BRADEC_THNNAM) And Not AcroForm.getField("BRADEC_THNNAM") Is Nothing Then AcroForm.getField("BRADEC_THNNAM").Value = BRADEC_THNNAM
+                            If Not IsEmpty(BRADEC_TAM_NAME) And Not AcroForm.getField("BRADEC_TAM_NAME") Is Nothing Then AcroForm.getField("BRADEC_TAM_NAME").Value = BRADEC_TAM_NAME
+                            If Not IsEmpty(BRADEC_AMP_NAME) And Not AcroForm.getField("BRADEC_AMP_NAME") Is Nothing Then AcroForm.getField("BRADEC_AMP_NAME").Value = BRADEC_AMP_NAME
+                            If Not IsEmpty(BRADEC_PROV_NAME) And Not AcroForm.getField("BRADEC_PROV_NAME") Is Nothing Then AcroForm.getField("BRADEC_PROV_NAME").Value = BRADEC_PROV_NAME
+                            If Not IsEmpty(BRADEC_POSCOD) And Not AcroForm.getField("BRADEC_POSCOD") Is Nothing Then AcroForm.getField("BRADEC_POSCOD").Value = BRADEC_POSCOD
+                        
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next p
+        
+            ' Process data from Sheet9 (TRM)
+            Dim TRM_DATE_D As String, TRM_DATE_M As String, TRM_DATE_Y As String
+            Dim OLDTRMNAM As String, TRMOLDNID As String
+            Dim NEWTRMNAM As String, TRMNEWNID As String
+
+                    For q = 2 To lastRow9
+                        ' Check if the NID in ws9 matches the current NID
+                        If ws9.Cells(q, "A").Value = NID Then
+                            ' Assign values from Sheet9 to variables
+                            
+                                If Not AcroForm.getField("TRMCHG_CHK") Is Nothing Then
+                                    AcroForm.getField("TRMCHG_CHK").Value = "Yes"
+                                End If
+                                
+                            TRM_DATE_D = ws9.Cells(q, "B").Value
+                            TRM_DATE_M = ws9.Cells(q, "C").Value
+                            TRM_DATE_Y = ws9.Cells(q, "D").Value
+                            OLDTRMNAM = ws9.Cells(q, "G").Value & " " & ws9.Cells(q, "H").Value & " " & ws9.Cells(q, "I").Value & " " & ws9.Cells(q, "J").Value
+                            TRMOLDNID = ws9.Cells(q, "E").Value
+                            NEWTRMNAM = ws9.Cells(q, "K").Value & " " & ws9.Cells(q, "L").Value & " " & ws9.Cells(q, "M").Value & " " & ws9.Cells(q, "N").Value
+                            TRMNEWNID = ws9.Cells(q, "F").Value
+
+ 
+                            ' Fill in the BRANIC date fields in the form
+                            If Not IsEmpty(TRM_DATE_D) And Not AcroForm.getField("TRM_DATE.D") Is Nothing Then AcroForm.getField("TRM_DATE.D").Value = TRM_DATE_D
+                            If Not IsEmpty(TRM_DATE_M) And Not AcroForm.getField("TRM_DATE.M") Is Nothing Then AcroForm.getField("TRM_DATE.M").Value = TRM_DATE_M
+                            If Not IsEmpty(TRM_DATE_Y) And Not AcroForm.getField("TRM_DATE.Y") Is Nothing Then AcroForm.getField("TRM_DATE.Y").Value = TRM_DATE_Y
+                            If Not IsEmpty(TRMOLDNID) And Not AcroForm.getField("TRMOLDNID") Is Nothing Then AcroForm.getField("TRMOLDNID").Value = TRMOLDNID
+                            If Not IsEmpty(OLDTRMNAM) And Not AcroForm.getField("OLDTRMNAM") Is Nothing Then AcroForm.getField("OLDTRMNAM").Value = OLDTRMNAM
+                            If Not IsEmpty(NEWTRMNAM) And Not AcroForm.getField("NEWTRMNAM") Is Nothing Then AcroForm.getField("NEWTRMNAM").Value = NEWTRMNAM
+                            If Not IsEmpty(TRMNEWNID) And Not AcroForm.getField("TRMNEWNID") Is Nothing Then AcroForm.getField("TRMNEWNID").Value = TRMNEWNID
+                            
+                            ' Exit the loop once the relevant NID has been found and processed
+                            Exit For
+                        End If
+                    Next q
+                    
+        ' Process data from Sheet10 (TXPNAMCHG)
+        Dim TITFNAM As String, FIRNAM1 As String, MID1 As String, LASNAM1 As String
+        Dim FIRNAM2 As String, TXPNAMCHG_DAT_D As String, TXPNAMCHG_DAT_M As String, TXPNAMCHG_DAT_Y As String
+        Dim NEWTXPTITCOD As String, NEWTXPFIRNAM As String, NEWTXPMIDNAM As String, NEWTXPLASNAM As String
+        Dim NEWJURNAM As String
+
+                            For r = 2 To lastRow10
+                                ' Check if the NID in ws10 matches the current NID
+                                If ws10.Cells(r, "A").Value = NID Then
+                                    ' Mark the TXPNAMCHG checkbox in the form
+                                    If Not AcroForm.getField("TXPNAMCHG_CHK") Is Nothing Then
+                                        AcroForm.getField("TXPNAMCHG_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    ' Assign values from Sheet1 and Sheet10 to variables
+                                    TITNAM_OLD = ws10.Cells(r, "J").Value
+                                    FIRNAM_OLD = ws10.Cells(r, "K").Value
+                                    LASNAM_OLD = ws10.Cells(r, "M").Value
+                                    
+                                    PER_NEWTITCOD = ws10.Cells(r, "E").Value
+                                    PER_NEWFIRNAM = ws10.Cells(r, "F").Value
+                                    PER_NEWLASNAM = ws10.Cells(r, "G").Value
+                                    
+                                    BUS_NEWTITCOD = ws10.Cells(r, "H").Value
+                                    BUS_NEWFIRNAM = ws10.Cells(r, "I").Value
+
+                                    
+                                    ' If NID starts with "3", fill specific fields
+                                    If Val(Left(NID, 1)) > 0 Then
+                                    
+                                         AcroForm.getField("TXPNAMTYP_P").Value = "Yes"
+                                          
+                                        ' Fill OLD fields with values
+                                        If Not IsEmpty(TITNAM_OLD) And Not AcroForm.getField("OLDTXPTITCOD") Is Nothing Then AcroForm.getField("OLDTXPTITCOD").Value = TITNAM_OLD
+                                        If Not IsEmpty(FIRNAM_OLD) And Not AcroForm.getField("OLDTXPFIRNAM") Is Nothing Then AcroForm.getField("OLDTXPFIRNAM").Value = FIRNAM_OLD
+                                        If Not IsEmpty(LASNAM_OLD) And Not AcroForm.getField("OLDTXPLASNAM") Is Nothing Then AcroForm.getField("OLDTXPLASNAM").Value = LASNAM_OLD
+                                        
+                                        ' Fill NEW fields with values
+                                        If Not IsEmpty(PER_NEWTITCOD) And Not AcroForm.getField("NEWTXPTITCOD") Is Nothing Then AcroForm.getField("NEWTXPTITCOD").Value = PER_NEWTITCOD
+                                        If Not IsEmpty(PER_NEWFIRNAM) And Not AcroForm.getField("NEWTXPFIRNAM") Is Nothing Then AcroForm.getField("NEWTXPFIRNAM").Value = PER_NEWFIRNAM
+                                        If Not IsEmpty(PER_NEWLASNAM) And Not AcroForm.getField("NEWTXPLASNAM") Is Nothing Then AcroForm.getField("NEWTXPLASNAM").Value = PER_NEWLASNAM
+                                    
+                                    ' If NID does not start with "3", fill other fields
+                                    Else
+                                    
+                                        FIRNAM2 = TITNAM_OLD & " " & FIRNAM_OLD
+                                        NEWJURNAM = BUS_NEWTITCOD & " " & BUS_NEWFIRNAM
+                                        
+                                        AcroForm.getField("TXPNAMTYP_J").Value = "Yes"
+                                        If Not IsEmpty(FIRNAM2) And Not AcroForm.getField("OLDJURNAM") Is Nothing Then AcroForm.getField("OLDJURNAM").Value = FIRNAM2
+                                        If Not IsEmpty(NEWJURNAM) And Not AcroForm.getField("NEWJURNAM") Is Nothing Then AcroForm.getField("NEWJURNAM").Value = NEWJURNAM
+                                    End If
+                                    
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next r
+                            
+                ' Process data from Sheet11 (BRANAMCHG)
+                Dim BRANAM_11 As String, BRANO_11 As String, BRANAMCHG_DATE_D As String, BRANAMCHG_DATE_M As String, BRANAMCHG_DATE_Y As String, NEWBRANAM As String
+
+                            For s = 2 To lastRow11
+     
+                                If ws11.Cells(s, "A").Value = NID Then
+                   
+                                    If Not AcroForm.getField("BRANAMCHG_CHK") Is Nothing Then
+                                        AcroForm.getField("BRANAMCHG_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    
+                                    BRANAM_11 = ws11.Cells(s, "E").Value & " " & ws11.Cells(s, "F").Value
+                                    BRANO_11 = ws11.Cells(s, "C").Value
+                                    'BRANAMCHG_DATE_D = ws11.Cells(s, "D").Value
+                                    'BRANAMCHG_DATE_M = ws11.Cells(s, "E").Value
+                                    'BRANAMCHG_DATE_Y = ws11.Cells(s, "F").Value
+                                    NEWBRANAM = ws11.Cells(s, "G").Value & " " & ws11.Cells(s, "H").Value
+
+                                
+                                    If BRANO_11 = 0 Then
+                                        
+                                        If Not AcroForm.getField("BRANAMCHG_CHK_0") Is Nothing Then
+                                            AcroForm.getField("BRANAMCHG_CHK_0").Value = "Yes"
+                                        End If
+                                         
+                                        If Not IsEmpty(BRANAM_11) And Not AcroForm.getField("OLDBRANAM") Is Nothing Then AcroForm.getField("OLDBRANAM").Value = BRANAM_11
+                                        If Not IsEmpty(NEWBRANAM) And Not AcroForm.getField("NEWBRANAM") Is Nothing Then AcroForm.getField("NEWBRANAM").Value = NEWBRANAM
+                                    Else
+                                    
+                                    If Not AcroForm.getField("BRANAMCHG_CHK_1") Is Nothing Then
+                                            AcroForm.getField("BRANAMCHG_CHK_1").Value = "Yes"
+                                        End If
+                                        
+                                        If Not IsEmpty(BRANO_11) And Not AcroForm.getField("BRANAMCHG_BRANO") Is Nothing Then AcroForm.getField("BRANAMCHG_BRANO").Value = Format(BRANO_11, "00000")
+                                        If Not IsEmpty(BRANAM_11) And Not AcroForm.getField("OLDBRANAM") Is Nothing Then AcroForm.getField("OLDBRANAM").Value = BRANAM_11
+                                        If Not IsEmpty(NEWBRANAM) And Not AcroForm.getField("NEWBRANAM") Is Nothing Then AcroForm.getField("NEWBRANAM").Value = NEWBRANAM
+                                        End If
+                                    
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next s
+                            
+        
+            ' Process data from Sheet12 (BUSTMPCLS)
+            Dim BRANUM_12 As String, BRANO_12 As String, TMPCLS_F_DATE_D As String, TMPCLS_F_DATE_M As String, TMPCLS_F_DATE_Y As String
+            Dim TMPCLS_L_DATE_D As String, TMPCLS_L_DATE_M As String, TMPCLS_L_DATE_Y As String
+
+                            For t = 2 To lastRow12
+     
+                                If ws12.Cells(t, "A").Value = NID Then
+                   
+                                    If Not AcroForm.getField("BUSTMPCLS_CHK") Is Nothing Then
+                                        AcroForm.getField("BUSTMPCLS_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    BRANUM_12 = ws12.Cells(t, "B").Value
+                                    BRANO_12 = ws12.Cells(t, "C").Value
+                                    TMPCLS_F_DATE_D = ws12.Cells(t, "D").Value
+                                    TMPCLS_F_DATE_M = ws12.Cells(t, "E").Value
+                                    TMPCLS_F_DATE_Y = ws12.Cells(t, "F").Value
+                                    TMPCLS_L_DATE_D = ws12.Cells(t, "G").Value
+                                    TMPCLS_L_DATE_M = ws12.Cells(t, "H").Value
+                                    TMPCLS_L_DATE_Y = ws12.Cells(t, "I").Value
+                                    
+                                    If Not IsEmpty(BRANUM_12) And Not AcroForm.getField("NUMBRA_TMPCLS") Is Nothing Then AcroForm.getField("NUMBRA_TMPCLS").Value = BRANUM_12
+                                    
+                                    If BRANO_11 = 0 Then
+                                        If Not AcroForm.getField("TMPCLS_CHK_0") Is Nothing Then
+                                            AcroForm.getField("TMPCLS_CHK_0").Value = "Yes"
+                                        End If
+                                        If Not IsEmpty(TMPCLS_F_DATE_D) And Not AcroForm.getField("TMPCLS_F_DATE.D") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.D").Value = TMPCLS_F_DATE_D
+                                        If Not IsEmpty(TMPCLS_F_DATE_M) And Not AcroForm.getField("TMPCLS_F_DATE.M") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.M").Value = TMPCLS_F_DATE_M
+                                        If Not IsEmpty(TMPCLS_F_DATE_Y) And Not AcroForm.getField("TMPCLS_F_DATE.Y") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.Y").Value = TMPCLS_F_DATE_Y
+                                        If Not IsEmpty(TMPCLS_L_DATE_D) And Not AcroForm.getField("TMPCLS_L_DATE.D") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.D").Value = TMPCLS_L_DATE_D
+                                        If Not IsEmpty(TMPCLS_L_DATE_M) And Not AcroForm.getField("TMPCLS_L_DATE.M") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.M").Value = TMPCLS_L_DATE_M
+                                        If Not IsEmpty(TMPCLS_L_DATE_Y) And Not AcroForm.getField("TMPCLS_L_DATE.Y") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.Y").Value = TMPCLS_L_DATE_Y
+
+                                    Else
+                                    If Not AcroForm.getField("TMPCLS_CHK_1") Is Nothing Then
+                                            AcroForm.getField("TMPCLS_CHK_1").Value = "Yes"
+                                        End If
+                                        If Not IsEmpty(BRANO_12) And Not AcroForm.getField("TMPCLS_BRANO") Is Nothing Then AcroForm.getField("TMPCLS_BRANO").Value = Format(BRANO_12, "00000")
+                                        If Not IsEmpty(TMPCLS_F_DATE_D) And Not AcroForm.getField("TMPCLS_F_DATE.D") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.D").Value = TMPCLS_F_DATE_D
+                                        If Not IsEmpty(TMPCLS_F_DATE_M) And Not AcroForm.getField("TMPCLS_F_DATE.M") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.M").Value = TMPCLS_F_DATE_M
+                                        If Not IsEmpty(TMPCLS_F_DATE_Y) And Not AcroForm.getField("TMPCLS_F_DATE.Y") Is Nothing Then AcroForm.getField("TMPCLS_F_DATE.Y").Value = TMPCLS_F_DATE_Y
+                                        If Not IsEmpty(TMPCLS_L_DATE_D) And Not AcroForm.getField("TMPCLS_L_DATE.D") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.D").Value = TMPCLS_L_DATE_D
+                                        If Not IsEmpty(TMPCLS_L_DATE_M) And Not AcroForm.getField("TMPCLS_L_DATE.M") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.M").Value = TMPCLS_L_DATE_M
+                                        If Not IsEmpty(TMPCLS_L_DATE_Y) And Not AcroForm.getField("TMPCLS_L_DATE.Y") Is Nothing Then AcroForm.getField("TMPCLS_L_DATE.Y").Value = TMPCLS_L_DATE_Y
+                                        End If
+                                    
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next t
+                            
+        ' Process data from Sheet13 (TXPDIE)
+        Dim DIE_DATE_D As String, DIE_DATE_M As String, DIE_DATE_Y As String, TXPDIETRF As String
+
+                            For u = 2 To lastRow13
+     
+                                If ws13.Cells(u, "A").Value = NID Then
+                   
+                                    If Not AcroForm.getField("TXPDIE_CHK") Is Nothing Then
+                                        AcroForm.getField("TXPDIE_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    DIE_DATE_D = ws13.Cells(u, "B").Value
+                                    DIE_DATE_M = ws13.Cells(u, "C").Value
+                                    DIE_DATE_Y = ws13.Cells(u, "D").Value
+                                    TXPDIETRF = ws13.Cells(u, "E").Value
+                                    
+                                            If Not IsEmpty(DIE_DATE_D) And Not AcroForm.getField("DIE_DATE.D") Is Nothing Then AcroForm.getField("DIE_DATE.D").Value = DIE_DATE_D
+                                            If Not IsEmpty(DIE_DATE_M) And Not AcroForm.getField("DIE_DATE.M") Is Nothing Then AcroForm.getField("DIE_DATE.M").Value = DIE_DATE_M
+                                            If Not IsEmpty(DIE_DATE_Y) And Not AcroForm.getField("DIE_DATE.Y") Is Nothing Then AcroForm.getField("DIE_DATE.Y").Value = DIE_DATE_Y
+                                    
+                                        If TXPDIETRF = "1" Then
+                                            If Not AcroForm.getField("DIE_CHK") Is Nothing Then
+                                                AcroForm.getField("DIE_CHK").Value = "Yes"
+                                            End If
+                                        End If
+
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next u
+                            
+        ' Process data from Sheet14 (CHGOTHER)
+        Dim OTHCHG_DATE_D As String, OTHCHG_DATE_M As String, OTHCHG_DATE_Y As String
+        Dim OTHCHG_DETAIL As String, OTHCHG_DETAIL_NEW As String, OTHCHG_DETAIL_H As String
+
+                            For v = 2 To lastRow14
+     
+                                If ws14.Cells(v, "A").Value = NID Then
+                   
+                                    If Not AcroForm.getField("CHGOTHER_CHK") Is Nothing Then
+                                        AcroForm.getField("CHGOTHER_CHK").Value = "Yes"
+                                    End If
+                                    
+                                    OTHCHG_DATE_D = ws14.Cells(v, "B").Value
+                                    OTHCHG_DATE_M = ws14.Cells(v, "C").Value
+                                    OTHCHG_DATE_Y = ws14.Cells(v, "D").Value
+                                    OTHCHG_DETAIL = ws14.Cells(v, "E").Value
+                                    OTHCHG_DETAIL_NEW = ws14.Cells(v, "F").Value
+                                    OTHCHG_DETAIL_H = ws14.Cells(v, "G").Value
+                                    
+                                            If Not IsEmpty(OTHCHG_DATE_D) And Not AcroForm.getField("OTHCHG_DATE.D") Is Nothing Then AcroForm.getField("OTHCHG_DATE.D").Value = OTHCHG_DATE_D
+                                            If Not IsEmpty(OTHCHG_DATE_M) And Not AcroForm.getField("OTHCHG_DATE.M") Is Nothing Then AcroForm.getField("OTHCHG_DATE.M").Value = OTHCHG_DATE_M
+                                            If Not IsEmpty(OTHCHG_DATE_Y) And Not AcroForm.getField("OTHCHG_DATE.Y") Is Nothing Then AcroForm.getField("OTHCHG_DATE.Y").Value = OTHCHG_DATE_Y
+                                            If Not IsEmpty(OTHCHG_DETAIL) And Not AcroForm.getField("OTHCHG_DETAIL") Is Nothing Then AcroForm.getField("OTHCHG_DETAIL").Value = OTHCHG_DETAIL
+                                            If Not IsEmpty(OTHCHG_DETAIL_NEW) And Not AcroForm.getField("OTHCHG_DETAIL_NEW") Is Nothing Then AcroForm.getField("OTHCHG_DETAIL_NEW").Value = OTHCHG_DETAIL_NEW
+                                            If Not IsEmpty(OTHCHG_DETAIL_H) And Not AcroForm.getField("OHGOTH_DETAIL_H") Is Nothing Then AcroForm.getField("OHGOTH_DETAIL_H").Value = OTHCHG_DETAIL_H
+
+                                    ' Exit the loop once the relevant NID has been found and processed
+                                    Exit For
+                                End If
+                            Next v
+        ' ------------------- Generate PDF Path and Save -------------------
+        Dim OutputPDF As String
+        OutputPDF = GeneratePDFPath(SUPOFFCOD, OFFCOD, NID)
+        AcroPDDoc.Save 1, OutputPDF
+        Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+        Debug.Print String(50, "-")
+        AcroAVDoc.Close False
+        AcroApp.Exit
+        pdfCount = pdfCount + 1
+        
+        ' ------------------- Update Log File and Counters -------------------
+        'Print #logFile, "Generated PDF: " & OutputPDF
+        If SUPOFFCOD <> "" Then suPDFCount = suPDFCount + 1
+        If OFFCOD <> "" Then offPDFCount = offPDFCount + 1
+
+        ' Release objects
+        Set AcroForm = Nothing
+        Set AcroPDDoc = Nothing
+        Set AcroAVDoc = Nothing
+        
+NextIteration:
+        On Error GoTo 0 ' Reset error handling
+    Next i
+
+    ' ------------------- Log Summary and Close Resources -------------------
+    'Print #logFile, "Total PDFs generated: " & pdfCount
+    
+    ' Log the number of PDFs generated for each SUPOFFCOD
+    Dim key As Variant
+    For Each key In suPDFCountDict.Keys
+        Print #logFile, "Total PDFs generated for SUPOFFCOD " & key & ": " & suPDFCountDict(key)
+    Next key
+
+    Close #logFile
+    'AcroApp.Exit
+    Set AcroApp = Nothing
+    MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    Print #logFile, "Error on row " & i & ": " & Err.Description
+    Resume Next
+    
+CleanExit:
+    Call RestoreExcelSettings
+    Debug.Print "Excel settings restored"
+    Exit Sub
+    
+End Sub
+' ------------------- Function to Open PDF Document -------------------
+Function OpenPDFDocument(ByRef AcroAVDoc As Object, ByRef AcroPDDoc As Object, ByRef AcroForm As Object, ByVal PDFName As String) As Boolean
+    Dim PDFPath As String
+    PDFPath = ThisWorkbook.Path & "\" & PDFName
+    If AcroAVDoc.Open(PDFPath, "") Then
+        Set AcroPDDoc = AcroAVDoc.GetPDDoc
+        Set AcroForm = AcroPDDoc.GetJSObject
+        OpenPDFDocument = Not AcroForm Is Nothing
+    Else
+        OpenPDFDocument = False
+    End If
+End Function
+
+' ------------------- Function to Generate PDF Path and File Name -------------------
+Function GeneratePDFPath(ByVal SUPOFFCOD As String, ByVal OFFCOD As String, ByVal NID As String) As String
+    Dim folderPath As String, FileName As String, fileNumber As Integer
+    folderPath = ThisWorkbook.Path & "\GENPDF\"
+    If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+    FileName = folderPath & IIf(Left(SUPOFFCOD, 2) < "04", SUPOFFCOD, OFFCOD) & "-PT09-P-"
+    fileNumber = 1
+    Do While Dir(FileName & Format(fileNumber, "0000") & ".pdf") <> ""
+        fileNumber = fileNumber + 1
+    Loop
+    GeneratePDFPath = FileName & Format(fileNumber, "0000") & ".pdf"
+End Function

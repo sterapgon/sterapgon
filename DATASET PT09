@@ -1,3 +1,33 @@
+Sub OptimizeExcelSettings()
+    With Application
+        ' Store current settings
+        SaveCalc = .Calculation
+        SaveEvents = .EnableEvents
+        SaveUpdating = .ScreenUpdating
+        SaveDisplayAlerts = .DisplayAlerts
+        SaveEnableAnimations = .EnableAnimations
+        
+        ' Optimize settings
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .ScreenUpdating = False
+        .DisplayAlerts = False
+        .EnableAnimations = False
+    End With
+End Sub
+
+Sub RestoreExcelSettings()
+    With Application
+        .Calculation = SaveCalc
+        .EnableEvents = SaveEvents
+        .ScreenUpdating = SaveUpdating
+        .DisplayAlerts = SaveDisplayAlerts
+        .EnableAnimations = SaveEnableAnimations
+        
+        ' Force update
+        .ScreenUpdating = True
+    End With
+End Sub
 Sub SplitDataBasedOnColumnJ()
     Dim wsSource As Worksheet
     Dim lastRow As Long, i As Long
@@ -6,6 +36,10 @@ Sub SplitDataBasedOnColumnJ()
     Dim targetWs As Worksheet
     Dim dataRange As Range
     Dim wsDict As Object
+    
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    Debug.Print "Excel settings optimized"
 
     ' Set the source worksheet
     Set wsSource = ThisWorkbook.Sheets("NID")
@@ -59,7 +93,13 @@ Sub SplitDataBasedOnColumnJ()
 
     MsgBox "Data has been split based on column J."
     Debug.Print "Data split operation completed."
+    
+CleanExit:
+    Call RestoreExcelSettings
+    Debug.Print "Excel settings restored"
+    Exit Sub
 End Sub
+
 
     Sub ColorRandomRowsBasedOnCountAllSheets()
         Dim ws As Worksheet
@@ -542,117 +582,3 @@ End Sub
             Next i
         End Sub
  '------------------------------------------------------------------------------------------------------------------ 
- 'ลบข้อมูล "(null)" ทั้งไฟล์
- Private Sub WriteDebugLog(ByVal debugNum As Integer, ByVal message As String)
-    On Error Resume Next
-    If debugNum > 0 Then
-        Debug.Print message
-        Print #debugNum, Format(Now, "yyyy-mm-dd hh:mm:ss") & " - " & message
-    End If
-End Sub
-
-Sub RemoveNullValuesOptimized()
-    Dim ws As Worksheet
-    Dim dataArray As Variant
-    Dim lastRow As Long, lastCol As Long
-    Dim nullCount As Long, processedCount As Long
-    Dim i As Long, j As Long, chunkStart As Long
-    Dim logNum As Ianteger, debugNum As Integer
-    Dim startTime As Date, chunkTime As Date
-    Dim logFile As String, debugFile As String
-    Dim isError As Boolean
-    
-    On Error GoTo ErrorHandler
-    
-    ' Initialize variables
-    startTime = Now
-    nullCount = 0
-    processedCount = 0
-    isError = False
-    
-    ' Set up log files
-    logFile = ThisWorkbook.Path & "\RemoveNull_Log.txt"
-    debugFile = ThisWorkbook.Path & "\RemoveNull_Debug.log"
-    
-    ' Open log files
-    logNum = FreeFile
-    Open logFile For Output As logNum
-    
-    debugNum = FreeFile
-    Open debugFile For Output As debugNum
-    
-    ' Enable optimizations
-    Call OptimizeExcelSettings
-    
-    For Each ws In ThisWorkbook.Worksheets
-        lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
-        lastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
-        
-        If lastRow > 1 And lastCol > 0 Then
-            WriteDebugLog debugNum, "Processing " & ws.Name & " - Rows: " & lastRow & ", Columns: " & lastCol
-            
-            For chunkStart = 1 To lastRow Step 1000
-                chunkTime = Now
-                Dim chunkEnd As Long
-                chunkEnd = WorksheetFunction.Min(chunkStart + 999, lastRow)
-                
-                ' Read data into array
-                dataArray = ws.Range(ws.Cells(chunkStart, 1), ws.Cells(chunkEnd, lastCol)).Value
-                
-                ' Process array
-                For i = 1 To UBound(dataArray, 1)
-                    For j = 1 To UBound(dataArray, 2)
-                        If Not IsEmpty(dataArray(i, j)) Then
-                            If CStr(dataArray(i, j)) = "(null)" Then
-                                dataArray(i, j) = Empty
-                                nullCount = nullCount + 1
-                            End If
-                        End If
-                        processedCount = processedCount + 1
-                    Next j
-                Next i
-                
-                ' Write processed data back
-                ws.Range(ws.Cells(chunkStart, 1), ws.Cells(chunkEnd, lastCol)).Value = dataArray
-                
-                WriteDebugLog debugNum, "Completed chunk " & chunkStart & " to " & chunkEnd & _
-                                      " in " & Format(Now - chunkTime, "hh:mm:ss")
-                
-                DoEvents
-            Next chunkStart
-        End If
-    Next ws
-
-CleanupAndExit:
-    If debugNum > 0 Then
-        WriteDebugLog debugNum, "Process " & IIf(isError, "failed", "completed") & " at " & Now
-        WriteDebugLog debugNum, "Total cells processed: " & processedCount
-        WriteDebugLog debugNum, "Total nulls removed: " & nullCount
-        Close #debugNum
-    End If
-    
-    If logNum > 0 Then Close #logNum
-    
-    Call RestoreExcelSettings
-    
-    If Not isError Then
-        MsgBox "Process completed successfully!" & vbNewLine & _
-               "Cells processed: " & Format(processedCount, "#,##0") & vbNewLine & _
-               "Nulls removed: " & Format(nullCount, "#,##0") & vbNewLine & _
-               "Time taken: " & Format(Now - startTime, "hh:mm:ss"), vbInformation
-    End If
-    Exit Sub
-
-ErrorHandler:
-    isError = True
-    Debug.Print "Error " & Err.Number & ": " & Err.Description
-    
-    If debugNum > 0 Then
-        WriteDebugLog debugNum, "ERROR " & Err.Number & ": " & Err.Description
-    End If
-    
-    MsgBox "An error occurred: " & Err.Description, vbCritical
-    Resume CleanupAndExit
-End Sub
- '------------------------------------------------------------------------------------------------------------------ 
- 

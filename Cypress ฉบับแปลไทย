@@ -1,0 +1,164 @@
+describe("Pnd72 - Officer", () => {
+  // ตัวแปรการตั้งค่า
+  const groupSelect = "SO-03-13";  // กลุ่มผู้ใช้
+  let offCode = "";                // รหัสสำนักงาน
+  let url = "";                    // URL สำหรับการเปลี่ยนเส้นทาง
+  const updatedData1 = [];         // เก็บผลลัพธ์จากการทำงานเมนู 1
+  const updatedData2 = [];         // เก็บผลลัพธ์จากการทำงานเมนู 2
+  const fileName = "TCONREFUND-Group5-1190-edit_07-08.xlsx"  // ชื่อไฟล์ข้อมูลนำเข้า
+
+  /**
+   * ฟังก์ชันจัดการการเข้าสู่ระบบ
+   * @param {string} code - รหัสสำนักงานสำหรับการเข้าสู่ระบบ
+   */
+  function login(code) {
+    cy.log("รหัส:", code);
+    cy.viewport(1280, 720);
+    cy.clearAllSessionStorage();
+    cy.visit("https://vsintra-uat.rd.go.th/rd-sso-login-web/#/");
+
+    // เลือกระบบและตั้งค่า
+    cy.get('[formControlName="systemId"]').click();
+    cy.get("div > span")
+      .contains("ระบบพิจารณาภาษีมูลค่าเพิ่มและภาษีธุรกิจเฉพาะ")
+      .click();
+    cy.get('[formControlName="systemUserGroup"]').select(groupSelect);
+    cy.get("label[for='checkbox-6']").click();
+
+    // กรอกรหัสสำนักงาน
+    cy.get('[formControlName="userRDOfficeCode"]').should("be.visible").wait(200).clear().type(code);
+    cy.get('[formControlName="userOfficeCode"]').should("be.visible").wait(200).clear().type(code);
+    cy.get('[formControlName="ClientLocation"]').should("be.visible").wait(200).clear().type(code);
+
+    // จัดการการเปลี่ยนเส้นทางหน้าต่าง
+    cy.window().then((win) => {
+      cy.stub(win, "open").callsFake((urlFake) => {
+        url = urlFake;
+      });
+    });
+    cy.get('button[type="submit"]').invoke("removeAttr", "target").click();
+
+    // นำทางไปยัง URL ที่เปลี่ยนเส้นทาง
+    cy.then(() => {
+      if (url) {
+        const encodedUrl = encodeURI(url);
+        cy.visit(encodedUrl);
+      }
+    });
+  }
+
+  /**
+   * ฟังก์ชันจัดการการทำงานในเมนู 1 - การตรวจสอบและยืนยันความถูกต้อง
+   * @param {string} nid - เลขประจำตัวประชาชนสำหรับค้นหา
+   * @returns {Promise<boolean>} สถานะความสำเร็จของการดำเนินการ
+   */
+  function handleMenu1(nid) {
+    return new Cypress.Promise((resolve) => {
+      let menu1Pass = false;
+      
+      // จัดการการเปิด/ปิดส่วนค้นหา
+      cy.get("body").then(($body) => {
+        if ($body.find('[formControlName="searchnid"]').length < 0) {
+          if ($body.find("#collapsearch").length > 0) {
+            cy.get("#collapsearch").should('exist').click();
+          }
+        }
+      });
+      
+      // กระบวนการค้นหา
+      cy.get('[formControlName="searchnid"]')
+        .should('exist')
+        .invoke("val", nid)
+        .trigger("input", { force: true });
+      
+      cy.get("form button").contains("ค้นหา").should("be.visible").wait(500).click();
+      cy.get(".table-scroll").should('exist').scrollTo("right").wait(1000);
+      
+      // จัดการผลลัพธ์การค้นหา
+      cy.get("body").then(($body) => {
+        if ($body.find('label[for="0-1"]').length > 0) {
+          // ดำเนินการกับข้อมูลที่พบ
+          cy.wait(1000);
+          cy.get('tbody:nth-of-type(1) td:nth-of-type(13) label[for="0-1"]')
+            .should('exist')
+            .scrollIntoView()
+            .should("be.visible")
+            .wait(200)
+            .click();
+          
+          // ยืนยันการดำเนินการ
+          cy.get("button").contains("ยืนยันผล").should("be.visible").wait(200).click();
+          cy.get(".modal-footer button").contains("ตกลง").should("be.visible").wait(200).click({ force: true });
+          cy.get("div.btn-footer > button").contains("ยกเลิก").should("be.visible").wait(500).click();
+          
+          menu1Pass = true;
+        } else {
+          // จัดการกรณีไม่พบข้อมูล
+          menu1Pass = false;
+          cy.wait(200);
+          cy.get(".modal-footer button").contains("ตกลง").should('exist').click({ force: true });
+        }
+        cy.log("ผลลัพธ์, สถานะเมนู 1: ", menu1Pass);
+        resolve(menu1Pass);
+      });
+    });
+  }
+
+  /**
+   * ฟังก์ชันจัดการการทำงานในเมนู 2 - การพิจารณาคืนภาษีมูลค่าเพิ่ม
+   * @param {string} nid - เลขประจำตัวประชาชนสำหรับค้นหา
+   * @returns {Promise<boolean>} สถานะความสำเร็จของการดำเนินการ
+   */
+  function handleMenu2(nid) {
+    // โครงสร้างคล้ายกับ handleMenu1 แต่มีการดำเนินการที่แตกต่างกัน
+    // ... [โค้ดดำเนินการสำหรับเมนู 2]
+  }
+
+  /**
+   * การทดสอบหลัก
+   */
+  it("จัดการเมนู", () => {
+    // ตรวจสอบการมีอยู่ของไฟล์นำเข้า
+    cy.task("checkFileExists", fileName).then((exists) => {
+      if (!exists) {
+        // ประมวลผลข้อมูลไฟล์
+        cy.readExcelFile(fileName).then((data) => {
+          // รอบแรก: ประมวลผลการทำงานเมนู 1
+          data.forEach((row, index) => {
+            // เข้าสู่ระบบเมื่อรหัสสำนักงานเปลี่ยน
+            if (offCode != row.DLNBATOFFCOD) {
+              login(row.DLNBATOFFCOD);
+              offCode = row.DLNBATOFFCOD;
+              // นำทางไปเมนู 1
+              cy.wait(500);
+              cy.get("span").contains("พิจารณาคืนภาษี").click();
+              cy.wait(200);
+              cy.contains("ข้อมูลการปฏิบัติการภาษีมูลค่าเพิ่ม").click();
+              cy.wait(200);
+              cy.get("a").contains("ตรวจสอบความถูกต้องและยืนยันความถูกต้องของแบบ ภ.พ.30 กับแบบ ภ.พ.72").click();
+              cy.wait(200);
+            }
+            
+            // ประมวลผลเมนู 1
+            handleMenu1(row.NID).then((menu1Pass) => {
+              updatedData1.push({
+                NID: row.NID,
+                menu1Status: menu1Pass ? "สำเร็จ" : "ล้มเหลว"
+              });
+              cy.writeToExcel(updatedData1, "ResultDataLoginUser1Menu1.xlsx");
+            });
+          });
+
+          // รอบสอง: ประมวลผลการทำงานเมนู 2
+          offCode = "";
+          data.forEach((row, index) => {
+            // โครงสร้างคล้ายกันสำหรับการประมวลผลเมนู 2
+            // ... [โค้ดประมวลผลเมนู 2]
+          });
+        });
+      } else {
+        cy.log("ไม่พบไฟล์!");
+      }
+    });
+  });
+});
