@@ -3,6 +3,7 @@ Sub FillPDFPP012()
     Dim AcroAVDoc As Object
     Dim AcroPDDoc As Object
     Dim AcroForm As Object
+    Dim JSObj As Object
     
     Dim ws1 As Worksheet
     Dim ws2 As Worksheet
@@ -132,7 +133,7 @@ Sub FillPDFPP012()
 
     For i = 2 To lastRow1
         ' Retrieve data from MAIN
-        On Error Resume Next
+        'On Error Resume Next
         NID = ws1.Cells(i, "A").Value
         BRANUM = ws1.Cells(i, "B").Value
         TITNAM = ws1.Cells(i, "C").Value
@@ -179,6 +180,11 @@ Sub FillPDFPP012()
         If AcroAVDoc.Open(PDFPath, "") Then
             Set AcroPDDoc = AcroAVDoc.GetPDDoc
             Set AcroForm = AcroPDDoc.GetJSObject
+        
+                        
+       Set AcroPDDoc = AcroAVDoc.GetPDDoc
+        Set JSObj = AcroPDDoc.GetJSObject
+        JSObj.getField("DLN").buttonImportIcon ("C:/Users/Lenovo/Desktop/AUTOFROM PDF PP01.2 PAPER/DLNPICTURE/" & NID & ".jpg")
 '--------------------------------------------------------------------
       If LTOFLG = 1 Then
                     AcroForm.getField("LTO_CHK").Value = "Yes"
@@ -256,7 +262,7 @@ Sub FillPDFPP012()
                 .getField("BRANUM").Value = BRANUM
                 
             End With
-
+        
             ' Process data from COU
             For j = 2 To lastRow2
                 If ws2.Cells(j, "A").Value = NID Then
@@ -510,6 +516,7 @@ OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
     ' Clear Acrobat objects
     Set AcroForm = Nothing
     Set AcroPDDoc = Nothing
+    If Not JSObj Is Nothing Then Set JSObj = Nothing
 End If
 Set AcroAVDoc = Nothing
 
@@ -531,4 +538,6 @@ Close #logFile
 ' Display completion message
 MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
 End Sub
+
+
 

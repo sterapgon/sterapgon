@@ -1,0 +1,582 @@
+Option Explicit
+
+' Constants for file paths
+Private Const DLN_IMAGE_PATH As String = "C:\Users\Lenovo\Desktop\AUTOFROM PDF PP01.2 PAPER\DLNPICTURE\"
+Private Const PDF_TEMPLATE_PATH As String = "\GENPP012_PAPER.pdf"
+Private Const OUTPUT_FOLDER As String = "GENPDF"
+
+' Global variables for tracking
+Private pdfCount As Integer
+Private suPDFCount As Integer
+Private offPDFCount As Integer
+Private SUPOFFNUMBER As Long
+Private OFFNUMBER As Long
+Private PrevSUPOFFCOD As String
+Private PrevOFFCOD As String
+
+Sub FillPDFPP012()
+    On Error GoTo ErrorHandler
+    
+    ' Declare main variables
+    Dim ws1 As Worksheet, ws2 As Worksheet, ws3 As Worksheet, ws4 As Worksheet
+    Dim lastRow1 As Long, lastRow2 As Long, lastRow3 As Long, lastRow4 As Long
+    Dim i As Long, fileNum As Integer
+    
+    ' Initialize log files
+    Dim logPath As String, processLogPath As String
+    logPath = ThisWorkbook.Path & "\missing_dln_log.txt"
+    processLogPath = ThisWorkbook.Path & "\process_log.txt"
+    
+    ' Initialize collections and tracking
+    Dim validNIDs As Collection
+    Set validNIDs = New Collection
+    Dim missingDLNs As String
+    
+    ' Initialize worksheets
+    Set ws1 = ThisWorkbook.Sheets("MAIN")
+    Set ws2 = ThisWorkbook.Sheets("COU")
+    Set ws3 = ThisWorkbook.Sheets("BRAN")
+    Set ws4 = ThisWorkbook.Sheets("PART")
+    
+    ' Get last rows
+    lastRow1 = GetLastRow(ws1, "A")
+    lastRow2 = GetLastRow(ws2, "A")
+    lastRow3 = GetLastRow(ws3, "A")
+    lastRow4 = GetLastRow(ws4, "A")
+    
+    ' Start logging
+    fileNum = FreeFile
+    Open logPath For Output As fileNum
+    WriteLogHeader fileNum
+    
+    ' Validate DLN files first
+    ValidateDLNFiles ws1, lastRow1, validNIDs, missingDLNs, fileNum
+    
+    ' Write validation summary
+    WriteValidationSummary fileNum, lastRow1, validNIDs.count, missingDLNs
+    Close fileNum
+    
+    ' Show validation results
+    If missingDLNs <> "" Then
+        ShowValidationMessage missingDLNs
+    End If
+    
+    ' Initialize process log
+    Open processLogPath For Output As #2
+    WriteProcessLogHeader
+    
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    
+    ' Initialize Acrobat
+    Dim AcroApp As Object
+    Set AcroApp = CreateObject("AcroExch.App")
+'-----------------------------------------------------------------------------------------
+For i = 2 To lastRow1
+    ' Retrieve data from MAIN
+
+    Dim NID As String
+    Dim BRANUM As String
+    Dim TITNAM As String
+    Dim FIRNAM As String
+    Dim MIDNAM As String
+    Dim LASNAM As String
+    Dim LTOFLG As String
+    Dim CERTNO As String
+    Dim OFFCOD As String
+    Dim OFFNAM As String
+    Dim SUPOFFCOD As String
+    Dim SUPNAM As String
+    Dim BLDGNAM As String
+    Dim roomNo As String
+    Dim floorNo As String
+    Dim VILLAGE As String
+    Dim ADDNO As String
+    Dim MOONO As String
+    Dim SOINAM As String
+    Dim YAEK As String
+    Dim THNNAM As String
+    Dim TAMNAM As String
+    Dim AMPNAM As String
+    Dim PROVNAM As String
+    Dim POSCOD As String
+    Dim BRATITNAM As String
+    Dim FRIDAT_D As String
+    Dim FRIDAT_M As String
+    Dim FRIDAT_Y As String
+    Dim LASDAT_D As String
+    Dim LASDAT_M As String
+    Dim LASDAT_Y As String
+
+    On Error Resume Next
+    NID = ws1.Cells(i, "A").Value
+    BRANUM = ws1.Cells(i, "B").Value
+    TITNAM = ws1.Cells(i, "C").Value
+    FIRNAM = ws1.Cells(i, "D").Value
+    MIDNAM = ws1.Cells(i, "E").Value
+    LASNAM = ws1.Cells(i, "F").Value
+    LTOFLG = ws1.Cells(i, "G").Value
+    CERTNO = ws1.Cells(i, "M").Value
+    OFFCOD = ws1.Cells(i, "I").Value
+    OFFNAM = ws1.Cells(i, "J").Value
+    SUPOFFCOD = ws1.Cells(i, "K").Value
+    SUPOFFNAM = ws1.Cells(i, "L").Value
+    BLDGNAM = ws1.Cells(i, "N").Value
+    roomNo = ws1.Cells(i, "O").Value
+    floorNo = ws1.Cells(i, "P").Value
+    VILLAGE = ws1.Cells(i, "Q").Value
+    ADDNO = ws1.Cells(i, "R").Value
+    MOONO = ws1.Cells(i, "S").Value
+    SOINAM = ws1.Cells(i, "T").Value
+    YAEK = ws1.Cells(i, "U").Value
+    THNNAM = ws1.Cells(i, "V").Value
+    TAMNAM = ws1.Cells(i, "X").Value
+    AMPNAM = ws1.Cells(i, "Z").Value
+    PROVNAM = ws1.Cells(i, "AB").Value
+    POSCOD = ws1.Cells(i, "AC").Value
+    BRATITNAM = ws1.Cells(i, "AD").Value
+    BRANAM = ws1.Cells(i, "AE").Value
+    FRIDAT_D = ws1.Cells(i, "AG").Value
+    FRIDAT_M = ws1.Cells(i, "AH").Value
+    FRIDAT_Y = ws1.Cells(i, "AI").Value
+    LASDAT_D = ws1.Cells(i, "AJ").Value
+    LASDAT_M = ws1.Cells(i, "AK").Value
+    LASDAT_Y = ws1.Cells(i, "AL").Value
+
+    PDFPath = ThisWorkbook.Path & "\GENPP012_PAPER.pdf"
+    Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+    
+    If AcroAVDoc.Open(PDFPath, "") Then
+        Set AcroPDDoc = AcroAVDoc.GetPDDoc
+        Set AcroForm = AcroPDDoc.GetJSObject
+    
+                    
+   Set AcroPDDoc = AcroAVDoc.GetPDDoc
+   Set JSObj = AcroPDDoc.GetJSObject
+   JSObj.getField("DLN").buttonImportIcon ("C:/Users/Lenovo/Desktop/AUTOFROM PDF PP01.2 PAPER/DLNPICTURE/" & NID & ".jpg")
+
+   If LTOFLG = 1 Then
+    AcroForm.getField("LTO_CHK").Value = "Yes"
+End If
+
+' Check the first two digits of SUPOFFCOD
+If Left(SUPOFFCOD, 2) < "04" Then
+    ' Case for SUPOFFCOD
+    AcroForm.getField("SUP_CHK").Value = "Yes"
+    AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+
+    ' Check if SUPOFFCOD has changed from the previous iteration
+    If SUPOFFCOD <> PrevSUPOFFCOD Then
+        ' Reset SUPOFFNUMBER if the code has changed
+        SUPOFFNUMBER = 0
+    End If
+
+    ' Increment SUPOFFNUMBER and format it
+    SUPOFFNUMBER = SUPOFFNUMBER + 1
+    Number = Format(SUPOFFNUMBER, "0000")
+
+    ' Assign to header field
+    AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP012-P-" & Number
+
+    ' Store the current SUPOFFCOD as the previous one for the next iteration
+    PrevSUPOFFCOD = SUPOFFCOD
+
+Else
+    ' Case for OFFCOD
+    AcroForm.getField("OFF_CHK").Value = "Yes"
+    AcroForm.getField("OFFNAM").Value = OFFNAM
+
+    ' Check if OFFCOD has changed from the previous iteration
+    If OFFCOD <> PrevOFFCOD Then
+        ' Reset OFFNUMBER if the code has changed
+        OFFNUMBER = 0
+    End If
+
+    ' Increment OFFNUMBER and format it
+    OFFNUMBER = OFFNUMBER + 1
+    NUMBER2 = Format(OFFNUMBER, "0000")
+
+    ' Assign to header field
+    AcroForm.getField("HEADER").Value = OFFCOD & "-PP012-P-" & NUMBER2
+
+    ' Store the current OFFCOD as the previous one for the next iteration
+    PrevOFFCOD = OFFCOD
+End If
+
+' Fill PDF fields from MAIN data
+With AcroForm
+.getField("NID").Value = NID
+.getField("FIRNAM").Value = TITNAM & " " & FIRNAM
+.getField("BIZLICNO").Value = CERTNO
+.getField("FIRDAT.D").Value = FRIDAT_D
+.getField("FIRDAT.M").Value = FRIDAT_M
+.getField("FIRDAT.Y").Value = FRIDAT_Y
+.getField("LASDAT.D").Value = LASDAT_D
+.getField("LASDAT.M").Value = LASDAT_M
+.getField("LASDAT.Y").Value = LASDAT_Y
+.getField("BRANAM").Value = BRATITNAM & " " & BRANAM
+.getField("BLDGNAM").Value = BLDGNAM
+.getField("ROOMNO").Value = roomNo
+.getField("FLOORNO").Value = floorNo
+.getField("VILLAGE").Value = VILLAGE
+.getField("ADDNO").Value = ADDNO
+.getField("MOONO").Value = MOONO
+.getField("SOINAM").Value = SOINAM
+.getField("YAEK").Value = YAEK
+.getField("THNNAM").Value = THNNAM
+.getField("TAM_NAME").Value = TAMNAM
+.getField("AMP_NAME").Value = AMPNAM
+.getField("PROV_NAME").Value = PROVNAM
+.getField("POSCOD").Value = POSCOD
+.getField("BRANUM").Value = BRANUM
+
+End With
+
+' Process data from COU
+Dim OVBLDGNAM As String
+Dim OVADDNO As String
+Dim OVTHNNAM As String
+Dim OVCITY As String
+Dim OVSTAT As String
+Dim OVCON As String
+Dim OVPOSCOD As String
+
+For j = 2 To lastRow2
+If ws2.Cells(j, "A").Value = NID Then
+    OVBLDGNAM = ws2.Cells(j, "B").Value
+    OVADDNO = ws2.Cells(j, "C").Value
+    OVTHNNAM = ws2.Cells(j, "D").Value
+    OVCITY = ws2.Cells(j, "E").Value
+    OVSTAT = ws2.Cells(j, "F").Value
+    OVCON = ws2.Cells(j, "H").Value
+    OVPOSCOD = ws2.Cells(j, "I").Value
+    
+    With AcroForm
+        .getField("COU_BLDGNAM").Value = OVBLDGNAM
+        .getField("COU_ADDNO").Value = OVADDNO
+        .getField("COU_THNNAM").Value = OVTHNNAM
+        .getField("COU_OVCITY").Value = OVCITY
+        .getField("COU_OVSTAT").Value = OVSTAT
+        .getField("OVCOUCOD").Value = OVCON
+        .getField("COU_POSCOD").Value = OVPOSCOD
+    End With
+
+End If
+Next j
+
+' Process data from BRAN
+Dim BRANO As String
+Dim BRA_TITNAM As String
+Dim BRA_BRANAM As String
+Dim BRA_BLDGNAM As String
+Dim BRA_ROOMNO As String
+Dim BRA_FLOORNO As String
+Dim BRA_VILLAGE As String
+Dim BRA_ADDNO As String
+Dim BRA_MOONO As String
+Dim BRA_SOINAM As String
+Dim BRA_YEAK As String
+Dim BRA_THNNAM As String
+Dim BRA_TAMNAM As String
+Dim BRA_AMPNAM As String
+Dim BRA_PROVNAM As String
+Dim BRA_POSCOD As String
+
+For k = 2 To lastRow3
+If ws3.Cells(k, "A").Value = NID Then
+    BRANO = ws3.Cells(k, "B").Value
+    BRA_TITNAM = ws3.Cells(k, "C").Value
+    BRA_BRANAM = ws3.Cells(k, "D").Value
+    BRA_BLDGNAM = ws3.Cells(k, "E").Value
+    BRA_ROOMNO = ws3.Cells(k, "F").Value
+    BRA_FLOORNO = ws3.Cells(k, "G").Value
+    BRA_VILLAGE = ws3.Cells(k, "H").Value
+    BRA_ADDNO = ws3.Cells(k, "I").Value
+    BRA_MOONO = ws3.Cells(k, "J").Value
+    BRA_SOINAM = ws3.Cells(k, "K").Value
+    BRA_YEAK = ws3.Cells(k, "L").Value
+    BRA_THNNAM = ws3.Cells(k, "M").Value
+    BRA_TAMNAM = ws3.Cells(k, "O").Value
+    BRA_AMPNAM = ws3.Cells(k, "Q").Value
+    BRA_PROVNAM = ws3.Cells(k, "S").Value
+    BRA_POSCOD = ws3.Cells(k, "T").Value
+    
+    
+    If BRANO = "1" Then
+    With AcroForm
+        .getField("B1.BRANAM").Value = BRA_TITNAM & " " & BRA_BRANAM
+        .getField("B1.BLDGNAM").Value = BRA_BLDGNAM
+        .getField("B1.ROOMNO").Value = BRA_ROOMNO
+        .getField("B1.FLOORNO").Value = BRA_FLOORNO
+        .getField("B1.VILLAGE").Value = BRA_VILLAGE
+        .getField("B1.ADDNO").Value = BRA_ADDNO
+        .getField("B1.MOONO").Value = BRA_MOONO
+        .getField("B1.SOINAM").Value = BRA_SOINAM
+        .getField("B1.YAEK").Value = BRA_YEAK
+        .getField("B1.THNNAM").Value = BRA_THNNAM
+        .getField("B1.TAM_NAME").Value = BRA_TAMNAM
+        .getField("B1.AMP_NAME").Value = BRA_AMPNAM
+        .getField("B1.PROV_NAME").Value = BRA_PROVNAM
+        .getField("B1.POSCOD").Value = BRA_POSCOD
+    End With
+    
+    Else
+        With AcroForm
+        .getField("B2.BRANAM").Value = BRA_TITNAM & " " & BRA_BRANAM
+        .getField("B2.BLDGNAM").Value = BRA_BLDGNAM
+        .getField("B2.ROOMNO").Value = BRA_ROOMNO
+        .getField("B2.FLOORNO").Value = BRA_FLOORNO
+        .getField("B2.VILLAGE").Value = BRA_VILLAGE
+        .getField("B2.ADDNO").Value = BRA_ADDNO
+        .getField("B2.MOONO").Value = BRA_MOONO
+        .getField("B2.SOINAM").Value = BRA_SOINAM
+        .getField("B2.YAEK").Value = BRA_YEAK
+        .getField("B2.THNNAM").Value = BRA_THNNAM
+        .getField("B2.TAM_NAME").Value = BRA_TAMNAM
+        .getField("B2.AMP_NAME").Value = BRA_AMPNAM
+        .getField("B2.PROV_NAME").Value = BRA_PROVNAM
+        .getField("B2.POSCOD").Value = BRA_POSCOD
+    End With
+End If
+End If
+Next k
+
+Dim PA_NID As String
+Dim PARTNO As String
+Dim PBRANAM As String
+Dim PBLDGNAM As String
+Dim PROOMNO As String
+Dim PFLOORNO As String
+Dim PVILLAGE As String
+Dim PADDNO As String
+Dim PMOONO As String
+Dim PSOINAM As String
+Dim PYEAK As String
+Dim PTHNNAM As String
+Dim PTAMNAM As String
+Dim PAMPNAM As String
+Dim PPROVNAM As String
+Dim PPOSCOD As String
+Dim PFIRDAT As String
+Dim PLASDAT As String
+Dim PAMO As String
+
+For l = 2 To lastRow4
+If ws4.Cells(l, "A").Value = NID Then
+    PA_NID = ws4.Cells(l, "B").Value
+    PARTNO = ws4.Cells(l, "C").Value
+    PBRANAM = ws4.Cells(l, "D").Value & " " & ws4.Cells(l, "E").Value
+    PBLDGNAM = ws4.Cells(l, "F").Value
+    PROOMNO = ws4.Cells(l, "G").Value
+    PFLOORNO = ws4.Cells(l, "H").Value
+    PVILLAGE = ws4.Cells(l, "I").Value
+    PADDNO = ws4.Cells(l, "J").Value
+    PMOONO = ws4.Cells(l, "K").Value
+    PSOINAM = ws4.Cells(l, "L").Value
+    PYEAK = ws4.Cells(l, "M").Value
+    PTHNNAM = ws4.Cells(l, "N").Value
+    PTAMNAM = ws4.Cells(l, "P").Value
+    PAMPNAM = ws4.Cells(l, "R").Value
+    PPROVNAM = ws4.Cells(l, "T").Value
+    PPOSCOD = ws4.Cells(l, "U").Value
+    PFIRDAT = ws4.Cells(l, "V").Value
+    PLASDAT = ws4.Cells(l, "W").Value
+    PAMO = ws4.Cells(l, "X").Value
+    
+
+    If PARTNO = 1 Then
+    With AcroForm
+        If PBRANAM <> "" Then .getField("P1.BRANAM").Value = PBRANAM
+        If PA_NID <> "" Then .getField("P1.NID").Value = PA_NID
+        If PBLDGNAM <> "" Then .getField("P1.BLDGNAM").Value = PBLDGNAM
+        If PROOMNO <> "" Then .getField("P1.ROOMNO").Value = PROOMNO
+        If PFLOORNO <> "" Then .getField("P1.FLOORNO").Value = PFLOORNO
+        If PVILLAGE <> "" Then .getField("P1.VILLAGE").Value = PVILLAGE
+        If PADDNO <> "" Then .getField("P1.ADDNO").Value = PADDNO
+        If PMOONO <> "" Then .getField("P1.MOONO").Value = PMOONO
+        If PSOINAM <> "" Then .getField("P1.SOINAM").Value = PSOINAM
+        If PYEAK <> "" Then .getField("P1.YAEK").Value = PYEAK
+        If PTHNNAM <> "" Then .getField("P1.THNNAM").Value = PTHNNAM
+        If PTAMNAM <> "" Then .getField("P1.TAMNAM").Value = PTAMNAM
+        If PAMPNAM <> "" Then .getField("P1.AMPNAM").Value = PAMPNAM
+        If PPROVNAM <> "" Then .getField("P1.PROV_NAME").Value = PPROVNAM
+        If PPOSCOD <> "" Then .getField("P1.POSCOD").Value = PPOSCOD
+        If PART_TELNO <> "" Then .getField("P1.TELNO").Value = PART_TELNO
+        If PFIRDAT <> "" Then .getField("P1.FIRDAT").Value = PFIRDAT
+        If PLASDAT <> "" Then .getField("P1.LASDAT").Value = PLASDAT
+        If PAMO <> 0 Then .getField("P1.CNTAMO").Value = Format(PAMO, "#,##0.00")
+    End With
+    
+    ElseIf PARTNO = 2 Then
+    With AcroForm
+        If PART_TITNAM <> "" Then .getField("P2.BRANAM").Value = PART_TITNAM & " " & PART_FIRNAM
+        If PROJECT <> "" Then .getField("P2.PROJECT").Value = PROJECT
+        If PART_NID <> "" Then .getField("P2.NID").Value = PART_NID
+        If PART_BLDGNAM <> "" Then .getField("P2.BLDGNAM").Value = PART_BLDGNAM
+        If PART_ROOMNO <> "" Then .getField("P2.ROOMNO").Value = PART_ROOMNO
+        If PART_FLOORNO <> "" Then .getField("P2.FLOORNO").Value = PART_FLOORNO
+        If PART_VILLAGE <> "" Then .getField("P2.VILLAGE").Value = PART_VILLAGE
+        If PART_ADDNO <> "" Then .getField("P2.ADDNO").Value = PART_ADDNO
+        If PART_MOONO <> "" Then .getField("P2.MOONO").Value = PART_MOONO
+        If PART_SOINAM <> "" Then .getField("P2.SOINAM").Value = PART_SOINAM
+        If PART_YAEK <> "" Then .getField("P2.YAEK").Value = PART_YAEK
+        If PART_THNNAM <> "" Then .getField("P2.THNNAM").Value = PART_THNNAM
+        If PART_TAM_NAME <> "" Then .getField("P2.TAMNAM").Value = PART_TAM_NAME
+        If PART_AMP_NAME <> "" Then .getField("P2.AMPNAM").Value = PART_AMP_NAME
+        If PART_PROV_NAME <> "" Then .getField("P2.PROV_NAME").Value = PART_PROV_NAME
+        If PART_POSCOD <> "" Then .getField("P2.POSCOD").Value = PART_POSCOD
+        If PART_TELNO <> "" Then .getField("P2.TELNO").Value = PART_TELNO
+        If PART_EMAIL <> "" Then .getField("P2.EMAIL").Value = PART_EMAIL
+        If PART_WEBSITE <> "" Then .getField("P2.WEBSITE").Value = PART_WEBSITE
+        If PART_FIRDAT <> "" Then .getField("P2.FIRDAT").Value = PART_FIRDAT
+        If PART_LASDAT <> "" Then .getField("P2.LASDAT").Value = PART_LASDAT
+        If PART_CNTAMO <> 0 Then .getField("P2.CNTAMO").Value = Format(PART_CNTAMO, "#,##0.00")
+    End With
+    
+    ElseIf PARTNO = 3 Then
+    With AcroForm
+        If PART_TITNAM <> "" Then .getField("P3.BRANAM").Value = PART_TITNAM & " " & PART_FIRNAM
+        If PROJECT <> "" Then .getField("P3.PROJECT").Value = PROJECT
+        If PART_NID <> "" Then .getField("P3.NID").Value = PART_NID
+        If PART_BLDGNAM <> "" Then .getField("P3.BLDGNAM").Value = PART_BLDGNAM
+        If PART_ROOMNO <> "" Then .getField("P3.ROOMNO").Value = PART_ROOMNO
+        If PART_FLOORNO <> "" Then .getField("P3.FLOORNO").Value = PART_FLOORNO
+        If PART_VILLAGE <> "" Then .getField("P3.VILLAGE").Value = PART_VILLAGE
+        If PART_ADDNO <> "" Then .getField("P3.ADDNO").Value = PART_ADDNO
+        If PART_MOONO <> "" Then .getField("P3.MOONO").Value = PART_MOONO
+        If PART_SOINAM <> "" Then .getField("P3.SOINAM").Value = PART_SOINAM
+        If PART_YAEK <> "" Then .getField("P3.YAEK").Value = PART_YAEK
+        If PART_THNNAM <> "" Then .getField("P3.THNNAM").Value = PART_THNNAM
+        If PART_TAM_NAME <> "" Then .getField("P3.TAMNAM").Value = PART_TAM_NAME
+        If PART_AMP_NAME <> "" Then .getField("P3.AMPNAM").Value = PART_AMP_NAME
+        If PART_PROV_NAME <> "" Then .getField("P3.PROV_NAME").Value = PART_PROV_NAME
+        If PART_POSCOD <> "" Then .getField("P3.POSCOD").Value = PART_POSCOD
+        If PART_TELNO <> "" Then .getField("P3.TELNO").Value = PART_TELNO
+        If PART_EMAIL <> "" Then .getField("P3.EMAIL").Value = PART_EMAIL
+        If PART_WEBSITE <> "" Then .getField("P3.WEBSITE").Value = PART_WEBSITE
+        If PART_FIRDAT <> "" Then .getField("P3.FIRDAT").Value = PART_FIRDAT
+        If PART_LASDAT <> "" Then .getField("P3.LASDAT").Value = PART_LASDAT
+        If PART_CNTAMO <> 0 Then .getField("P3.CNTAMO").Value = Format(PART_CNTAMO, "#,##0.00")
+    End With
+        
+        Exit For
+    End If
+End If
+Next l
+
+   ' Save the filled PDF
+   Dim FileNumber As Integer
+   Dim FileName As String
+   Dim folderPath As String
+   Dim subfolderPath As String
+   
+   ' Check if the current SUPOFFCOD is different from the previously used one
+   If SUPOFFCOD <> currentSUPOFFCOD Then
+       ' If currentSUPOFFCOD is not empty, print the number of PDFs generated
+       If currentSUPOFFCOD <> "" Then
+           Print #logFile, "SUPOFFCOD: " & currentSUPOFFCOD & " generated " & suPDFCount & " PDFs."
+       End If
+       suPDFCount = 0
+       currentSUPOFFCOD = SUPOFFCOD
+   End If
+   
+   ' Check if the current OFFCOD is different from the previously used one
+   If OFFCOD <> currentOFFCOD Then
+       ' If currentOFFCOD is not empty, print the number of PDFs generated
+       If currentOFFCOD <> "" Then
+           'Print #logFile, "OFFCOD: " & currentOFFCOD & " generated " & offPDFCount & " PDFs."
+       End If
+       offPDFCount = 0
+       currentOFFCOD = OFFCOD
+   End If
+   
+   ' Check and set the path for saving the PDF
+   If Left(SUPOFFCOD, 2) < "04" Then
+       folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+       FileName = folderPath & SUPOFFCOD & "-PP012-P-"
+   Else
+       folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+       FileName = folderPath & OFFCOD & "-PP012-P-"
+   End If
+   
+   ' Create the folder if it does not exist
+   If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+   
+   ' Set a unique file number for the PDF
+   FileNumber = 1
+   Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+       FileNumber = FileNumber + 1
+   Loop
+   
+   ' If the number of files exceeds 10, create a backup folder and rename the file
+   If FileNumber > 10 Then
+       folderPath = folderPath & "spare\"
+       If Dir(folderPath, vbDirectory) = "" Then MkDir folderPath
+       FileName = folderPath & SUPOFFCOD & "-" & NID & "-"
+   End If
+   OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+   
+   ' Save the PDF
+       Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+       AcroPDDoc.Save 1, OutputPDF
+       AcroAVDoc.Close False
+       AcroApp.Exit
+   
+       ' Increase the PDF count
+       pdfCount = pdfCount + 1
+       suPDFCount = suPDFCount + 1
+       offPDFCount = offPDFCount + 1
+   
+       ' Clear Acrobat objects
+       Set AcroForm = Nothing
+       Set AcroPDDoc = Nothing
+       If Not JSObj Is Nothing Then Set JSObj = Nothing
+   End If
+   Set AcroAVDoc = Nothing
+   
+   On Error GoTo 0 ' Reset error handling after critical code
+   NextIteration:
+   Next i
+'-----------------------------------------------------------------------------------------
+CleanupAndExit:
+    ' Cleanup
+    CleanupObjects AcroApp
+    Close #2
+    Call RestoreExcelSettings
+    
+    ' Show completion message
+    ShowCompletionMessage pdfCount
+    Exit Sub
+    
+ErrorHandler:
+    LogError Err.Description
+    Resume CleanupAndExit
+End Sub
+
+Private Sub ValidateDLNFiles(ws As Worksheet, lastRow As Long, ByRef validNIDs As Collection, _
+                           ByRef missingDLNs As String, fileNum As Integer)
+    Dim i As Long, NID As String
+    
+    For i = 2 To lastRow
+        NID = ws.Cells(i, "A").Value
+        If Not IsDLNFileExists(NID, missingDLNs, fileNum) Then
+            validNIDs.Add NID, CStr(NID)
+        End If
+    Next i
+End Sub
+
+Private Function IsDLNFileExists(NID As String, ByRef missingDLNs As String, fileNum As Integer) As Boolean
+    Dim DLNPath As String
+    DLNPath = DLN_IMAGE_PATH & NID & ".jpg"
+    
+    If Dir(DLNPath) = "" Then
+        Print #fileNum, "Missing DLN file for NID: " & NID
+        If missingDLNs = "" Then
+            missingDLNs = NID
+        Else
+            missingDLNs = missingDLNs & ", " & NID
+        End If
+        IsDLNFileExists = True
+    End If
+End Function
+

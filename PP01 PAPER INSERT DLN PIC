@@ -1,0 +1,735 @@
+Sub OptimizeExcelSettings()
+    With Application
+        ' Store current settings
+        SaveCalc = .Calculation
+        SaveEvents = .EnableEvents
+        SaveUpdating = .ScreenUpdating
+        SaveDisplayAlerts = .DisplayAlerts
+        SaveEnableAnimations = .EnableAnimations
+        
+        ' Optimize settings
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .ScreenUpdating = False
+        .DisplayAlerts = False
+        .EnableAnimations = False
+    End With
+End Sub
+
+Sub RestoreExcelSettings()
+    With Application
+        .Calculation = SaveCalc
+        .EnableEvents = SaveEvents
+        .ScreenUpdating = SaveUpdating
+        .DisplayAlerts = SaveDisplayAlerts
+        .EnableAnimations = SaveEnableAnimations
+        
+        ' Force update
+        .ScreenUpdating = True
+    End With
+End Sub
+Sub FillPDFWithMultipleSheet_PP01()
+    On Error GoTo ErrorHandler
+    
+    ' Declare main variables and objects
+    Dim AcroApp As Object, AcroAVDoc As Object, AcroPDDoc As Object, AcroForm As Object, JSObj As Object
+    Dim ws1 As Worksheet, ws2 As Worksheet, ws3 As Worksheet, ws4 As Worksheet
+    Dim lastRow1 As Long, lastRow2 As Long, lastRow3 As Long, lastRow4 As Long
+    Dim i As Long, j As Long, k As Long, l As Long
+    Dim startTime As Single, endTime As Single
+    
+    ' Initialize log files
+    Dim logPath As String, processLogPath As String, fileNum As Integer
+    logPath = ThisWorkbook.Path & "\missing_dln_log.txt"
+    processLogPath = ThisWorkbook.Path & "\process_log.txt"
+    
+    ' Open log files
+    fileNum = FreeFile
+    Open logPath For Output As fileNum
+    Print #fileNum, "DLN Validation Report - " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    Print #fileNum, String(50, "-")
+    
+    ' Initialize worksheet references
+    Set ws1 = ThisWorkbook.Sheets("NID_DETAIL")
+    Set ws2 = ThisWorkbook.Sheets("BRANO_DETAIL")
+    Set ws3 = ThisWorkbook.Sheets("REGIS_DETAIL")
+    Set ws4 = ThisWorkbook.Sheets("ISIC_DETAIL")
+    
+    ' Get last rows
+    lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
+    lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
+    lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
+    lastRow4 = ws4.Cells(ws4.Rows.count, "A").End(xlUp).Row
+    
+    ' Initialize Acrobat
+    Set AcroApp = CreateObject("AcroExch.App")
+    
+    ' First pass: Validate all NIDs and collect valid ones
+    Dim validNIDs As Collection
+    Set validNIDs = New Collection
+    Dim missingDLNs As String
+    
+    For i = 2 To lastRow1
+        Dim NID As String
+        NID = ws1.Cells(i, "A").Value
+        Dim DLNPath As String
+        DLNPath = "C:\Users\Lenovo\Desktop\AUTO FROM PDF PP01 PAPER\DLNPICTURE\" & NID & ".jpg"
+        
+        If Dir(DLNPath) = "" Then
+            Print #fileNum, "Missing DLN file for NID: " & NID
+            If missingDLNs = "" Then
+                missingDLNs = NID
+            Else
+                missingDLNs = missingDLNs & ", " & NID
+            End If
+        Else
+            validNIDs.Add NID, CStr(NID)  ' Using NID as key for faster lookup
+        End If
+    Next i
+    
+    ' Write validation summary
+    Print #fileNum, vbNewLine & "Validation Summary:"
+    Print #fileNum, "Total NIDs checked: " & (lastRow1 - 1)
+    Print #fileNum, "Valid NIDs found: " & validNIDs.count
+    Print #fileNum, "Missing NIDs: " & (lastRow1 - 1 - validNIDs.count)
+    Close fileNum
+    
+    ' Notify user of validation results
+    If missingDLNs <> "" Then
+        MsgBox "Some DLN files are missing. Details have been logged to missing_dln_log.txt" & vbCrLf & _
+               "Proceeding with processing of valid NIDs only.", vbInformation
+    End If
+    
+    ' Initialize processing log
+    Open processLogPath For Output As #2
+    Print #2, "Processing Log - " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    Print #2, String(50, "-")
+    
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    
+    ' Initialize counters and status variables
+    Dim pdfCount As Integer
+    Dim SUPOFFNUMBER As Long, OFFNUMBER As Long
+    Dim PrevSUPOFFCOD As String, PrevOFFCOD As String
+    pdfCount = 0
+    SUPOFFNUMBER = 0
+    OFFNUMBER = 0
+    
+    Dim elapsedTime As Single
+    Dim elapsedHours As Long
+    Dim elapsedMinutes As Long
+    Dim elapsedSeconds As Single
+    
+    ' Main processing loop
+    ' Variables for data from Sheet1 (NID DETAIL)
+    Dim FIRNAM As String
+    Dim NATION As String
+    Dim ENGNAM As String
+    Dim REGISDAT As String
+    Dim OFFCOD As String
+    Dim SUPOFFCOD As String
+    Dim HEADER As String
+    Dim SUPOFFNAM As String
+    Dim OFFNAM As String
+    Dim ORGANIZE As String
+    Dim TITNAM As String
+    Dim BRANAM As String
+    Dim BLDGNAM As String
+    Dim ROOMNO As String
+    Dim FLOORNO As String
+    Dim VILLAGE As String
+    Dim ADDNO As String
+    Dim MOONO As String
+    Dim SOINAM As String
+    Dim YAEK As String
+    Dim THNNAM As String
+    Dim TAM_NAME As String
+    Dim AMP_NAME As String
+    Dim PROV_NAME As String
+    Dim POSCOD As String
+    Dim TELNO As String
+    Dim EMAIL As String
+    Dim WEBSITE As String
+    Dim BRANUM As String
+    Dim NUMBER As String
+    
+    For i = 2 To lastRow1
+        NID = ws1.Cells(i, "A").Value
+        NATION = ws1.Cells(i, "B").Value
+        FIRNAM = ws1.Cells(i, "C").Value & " " & ws1.Cells(i, "D").Value & " " & ws1.Cells(i, "E").Value & " " & ws1.Cells(i, "F").Value
+        LTOFLG = ws1.Cells(i, "G").Value
+        ENGNAM = ws1.Cells(i, "H").Value
+        REGISDAT = ws1.Cells(i, "AJ").Value
+        OFFCOD = ws1.Cells(i, "J").Value
+        SUPOFFCOD = ws1.Cells(i, "K").Value
+        nextHeader = ws1.Cells(i + 1, "K").Value ' Header
+        SUPOFFNAM = ws1.Cells(i, "L").Value
+        ORGANIZE = ws1.Cells(i, "M").Value
+        BRANAM = ws1.Cells(i, "N").Value & " " & ws1.Cells(i, "O").Value
+        BLDGNAM = ws1.Cells(i, "P").Value
+        ROOMNO = ws1.Cells(i, "Q").Value
+        FLOORNO = ws1.Cells(i, "R").Value
+        VILLAGE = ws1.Cells(i, "S").Value
+        ADDNO = ws1.Cells(i, "T").Value
+        MOONO = ws1.Cells(i, "U").Value
+        SOINAM = ws1.Cells(i, "V").Value
+        YAEK = ws1.Cells(i, "W").Value
+        THNNAM = ws1.Cells(i, "X").Value
+        TAM_NAME = ws1.Cells(i, "Z").Value
+        AMP_NAME = ws1.Cells(i, "AB").Value
+        PROV_NAME = ws1.Cells(i, "AD").Value
+        POSCOD = ws1.Cells(i, "AE").Value
+        TELNO = ws1.Cells(i, "AF").Value
+        EMAIL = ws1.Cells(i, "AG").Value
+        WEBSITE = ws1.Cells(i, "AH").Value
+        BUSLOCTYP = ws1.Cells(i, "AI").Value
+        BRANUM = ws1.Cells(i, "AK").Value
+        OFFNAM = ws1.Cells(i, "AL").Value
+
+'------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+        ' Check if NID is valid using error handling
+        On Error Resume Next
+        Dim isValid As Boolean
+        isValid = False
+        Dim testValid As String
+        testValid = validNIDs(CStr(NID))
+        If Err.NUMBER = 0 Then isValid = True
+        Err.Clear
+        On Error GoTo ErrorHandler
+        
+        If isValid Then
+            ' Log processing start
+            Print #2, Format(Now, "hh:mm:ss") & " - Starting to process NID: " & NID
+        
+            PDFPath = ThisWorkbook.Path & "\PP01 PAPER.pdf"
+            Set AcroAVDoc = CreateObject("AcroExch.AVDoc")
+            
+            If AcroAVDoc.Open(PDFPath, "") Then
+                Set AcroPDDoc = AcroAVDoc.GetPDDoc
+                Set AcroForm = AcroPDDoc.GetJSObject
+                Set JSObj = AcroPDDoc.GetJSObject
+                
+                ' Import DLN image
+                JSObj.getField("DLN").buttonImportIcon ("C:/Users/Lenovo/Desktop/AUTO FROM PDF PP01 PAPER/DLNPICTURE/" & NID & ".jpg")
+                
+    If LTOFLG = 1 Then
+        AcroForm.getField("LTO_CHK").Value = "Yes"
+    End If
+
+   ' Check the first two digits of SUPOFFCOD
+    If Left(SUPOFFCOD, 2) < "04" Then
+        ' Case for SUPOFFCOD
+        AcroForm.getField("SUPOFF_CHK").Value = "Yes"
+        AcroForm.getField("SUPOFFNAM").Value = SUPOFFNAM
+
+        ' Check if SUPOFFCOD has changed from the previous iteration
+        If SUPOFFCOD <> PrevSUPOFFCOD Then
+            ' Reset SUPOFFNUMBER if the code has changed
+            SUPOFFNUMBER = 0
+        End If
+
+        ' Increment SUPOFFNUMBER and format it
+        SUPOFFNUMBER = SUPOFFNUMBER + 1
+        NUMBER = Format(SUPOFFNUMBER, "0000")
+
+        ' Assign to header field
+        AcroForm.getField("HEADER").Value = SUPOFFCOD & "-PP01-P-" & NUMBER
+
+        ' Store the current SUPOFFCOD as the previous one for the next iteration
+        PrevSUPOFFCOD = SUPOFFCOD
+
+    Else
+        ' Case for OFFCOD
+        AcroForm.getField("OFF_CHK").Value = "Yes"
+        AcroForm.getField("OFFNAM").Value = OFFNAM
+
+        ' Check if OFFCOD has changed from the previous iteration
+        If OFFCOD <> PrevOFFCOD Then
+            ' Reset OFFNUMBER if the code has changed
+            OFFNUMBER = 0
+        End If
+
+        ' Increment OFFNUMBER and format it
+        OFFNUMBER = OFFNUMBER + 1
+        NUMBER2 = Format(OFFNUMBER, "0000")
+
+        ' Assign to header field
+        AcroForm.getField("HEADER").Value = OFFCOD & "-PP01-P-" & NUMBER2
+
+        ' Store the current OFFCOD as the previous one for the next iteration
+        PrevOFFCOD = OFFCOD
+    End If
+                                      
+                ' Fill PDF fields for NID AND DETAIL
+                AcroForm.getField("NID").Value = CStr(NID) ' Convert NID to text (string)
+                AcroForm.getField("PERNAM").Value = FIRNAM
+                    
+                If Val(Left(NID, 1)) > 0 Then
+                    AcroForm.getField("030_11_NIDCHK").Value = "Yes"
+                    AcroForm.getField("BIRTHDAT").Value = REGISDAT
+                    AcroForm.getField("NATIONALLITY").Value = NATION
+                
+                ElseIf NID Like "0992*" Then
+                AcroForm.getField("0992_0994_NIDCHK").Value = "Yes"
+                
+                ElseIf NID Like "0994*" Then
+                AcroForm.getField("0992_0994_NIDCHK").Value = "Yes"
+                
+                Else
+                AcroForm.getField("NIDCHK").Value = "Yes"
+                If Not AcroForm.getField("ENG_NAM") Is Nothing Then AcroForm.getField("ENG_NAM").Value = ENGNAM
+                If Not AcroForm.getField("ISSUEDAT") Is Nothing Then AcroForm.getField("ISSUEDAT").Value = REGISDAT
+                If Not AcroForm.getField("IssueOrganization") Is Nothing Then AcroForm.getField("IssueOrganization").Value = ORGANIZE
+                End If
+                
+                ' Fill additional address fields if they exist
+                With AcroForm
+                    If BRANAM <> "" Then .getField("BRANAM").Value = BRANAM
+                    If BLDGNAM <> "" Then .getField("BLDGNAM").Value = BLDGNAM
+                    If ROOMNO <> "" Then .getField("ROOMNO").Value = ROOMNO
+                    If FLOORNO <> "" Then .getField("FLOORNO").Value = FLOORNO
+                    If VILLAGE <> "" Then .getField("VILLAGE").Value = VILLAGE
+                    If ADDNO <> "" Then .getField("ADDNO").Value = ADDNO
+                    If MOONO <> "" Then .getField("MOONO").Value = MOONO
+                    If SOINAM <> "" Then .getField("SOINAM").Value = SOINAM
+                    If YAEK <> "" Then .getField("YAEK").Value = YAEK
+                    If THNNAM <> "" Then .getField("THNNAM").Value = THNNAM
+                    If TAM_NAME <> "" Then .getField("TAMNAM").Value = TAM_NAME
+                    If AMP_NAME <> "" Then .getField("AMPNAM").Value = AMP_NAME
+                    If PROV_NAME <> "" Then .getField("PROVNAM").Value = PROV_NAME
+                    If POSCOD <> "" Then .getField("POSCOD").Value = POSCOD
+                    If TELNO <> "" Then .getField("TELNO").Value = TELNO
+                    If EMAIL <> "" Then .getField("EMAIL").Value = EMAIL
+                    If WEBSITE <> "" Then .getField("WEBSITE").Value = WEBSITE
+                    If BRANUM <> "" And BRANUM <> 0 Then
+                        .getField("BRANUM").Value = BRANUM
+                        End If
+                End With
+                
+                'Fill BUSLOCTYP
+                 If BUSLOCTYP >= "01" And BUSLOCTYP <= "06" Then
+                        AcroForm.getField("T" & CInt(BUSLOCTYP)).Value = "Yes"
+                    End If
+'------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    ' Process data from BRANO_DETAIL
+                    ' Variables for data from Sheet2 (REGIS_DATAIL)
+                    Dim BRANO As String
+                    Dim BRA_BRANAM As String
+                    Dim BRA_BLDGNAM As String
+                    Dim BRA_ROOMNO As String
+                    Dim BRA_FLOORNO As String
+                    Dim BRA_VILLAGE As String
+                    Dim BRA_ADDNO As String
+                    Dim BRA_MOONO As String
+                    Dim BRA_SOINAM As String
+                    Dim BRA_YAEK As String
+                    Dim BRA_THNNAM As String
+                    Dim BRA_TAM_NAME As String
+                    Dim BRA_AMP_NAME As String
+                    Dim BRA_PROV_NAME As String
+                    Dim BRA_POSCOD As String
+                    Dim BRA_TELNO As String
+                    Dim BRA_EMAIL As String
+                    Dim BRA_WEBSITE As String
+                    Dim BRA_BUSLOCTYP As String
+                    
+                    For j = 2 To lastRow2
+                        ' Check if the NID in Sheet2 matches the current NID being processed from Sheet2
+                        If ws2.Cells(j, "A").Value = NID Then
+                        
+                        ' Retrieve data from BRANO_DETAIL
+                        BRANO = ws2.Cells(j, "B").Value
+                        BRA_BRANAM = ws2.Cells(j, "C").Value & " " & ws2.Cells(j, "D").Value
+                        BRA_BLDGNAM = ws2.Cells(j, "E").Value
+                        BRA_ROOMNO = ws2.Cells(j, "F").Value
+                        BRA_FLOORNO = ws2.Cells(j, "G").Value
+                        BRA_VILLAGE = ws2.Cells(j, "H").Value
+                        BRA_ADDNO = ws2.Cells(j, "I").Value
+                        BRA_MOONO = ws2.Cells(j, "J").Value
+                        BRA_SOINAM = ws2.Cells(j, "K").Value
+                        BRA_YAEK = ws2.Cells(j, "L").Value
+                        BRA_THNNAM = ws2.Cells(j, "M").Value
+                        BRA_TAM_NAME = ws2.Cells(j, "O").Value
+                        BRA_AMP_NAME = ws2.Cells(j, "Q").Value
+                        BRA_PROV_NAME = ws2.Cells(j, "S").Value
+                        BRA_POSCOD = ws2.Cells(j, "T").Value
+                        BRA_TELNO = ws2.Cells(j, "U").Value
+                        BRA_EMAIL = ws2.Cells(j, "V").Value
+                        BRA_WEBSITE = ws2.Cells(j, "W").Value
+                        BRA_BUSLOCTYP = ws2.Cells(j, "X").Value
+                         
+                    If BRANO = 1 Then
+                       With AcroForm
+                           If BRA_BRANAM <> "" Then .getField("B1.BRANAM").Value = BRA_BRANAM
+                           If BRA_BLDGNAM <> "" Then .getField("B1.BLDGNAM").Value = BRA_BLDGNAM
+                           If BRA_ROOMNO <> "" Then .getField("B1.ROOMNO").Value = BRA_ROOMNO
+                           If BRA_FLOORNO <> "" Then .getField("B1.FLOORNO").Value = BRA_FLOORNO
+                           If BRA_VILLAGE <> "" Then .getField("B1.VILLAGE").Value = BRA_VILLAGE
+                           If BRA_ADDNO <> "" Then .getField("B1.ADDNO").Value = BRA_ADDNO
+                           If BRA_MOONO <> "" Then .getField("B1.MOONO").Value = BRA_MOONO
+                           If BRA_SOINAM <> "" Then .getField("B1.SOINAM").Value = BRA_SOINAM
+                           If BRA_YAEK <> "" Then .getField("B1.YAEK").Value = BRA_YAEK
+                           If BRA_THNNAM <> "" Then .getField("B1.THNNAM").Value = BRA_THNNAM
+                           If BRA_TAM_NAME <> "" Then .getField("B1.TAMNAM").Value = BRA_TAM_NAME
+                           If BRA_AMP_NAME <> "" Then .getField("B1.AMPNAM").Value = BRA_AMP_NAME
+                           If BRA_PROV_NAME <> "" Then .getField("B1.PROVNAM").Value = BRA_PROV_NAME
+                           If BRA_POSCOD <> "" Then .getField("B1.POSCOD").Value = BRA_POSCOD
+                           If BRA_TELNO <> "" Then .getField("B1.TELNO").Value = BRA_TELNO
+                           If BRA_EMAIL <> "" Then .getField("B1.EMAIL").Value = BRA_EMAIL
+                            
+                            If BRA_BUSLOCTYP >= "01" And BRA_BUSLOCTYP <= "06" Then
+                                AcroForm.getField("B1.T" & CInt(BRA_BUSLOCTYP)).Value = "Yes"
+                            End If
+                        End With
+
+                    ElseIf BRANO = 2 Then
+                       With AcroForm
+                           If BRA_BRANAM <> "" Then .getField("B2.BRANAM").Value = BRA_BRANAM
+                           If BRA_BLDGNAM <> "" Then .getField("B2.BLDGNAM").Value = BRA_BLDGNAM
+                           If BRA_ROOMNO <> "" Then .getField("B2.ROOMNO").Value = BRA_ROOMNO
+                           If BRA_FLOORNO <> "" Then .getField("B2.FLOORNO").Value = BRA_FLOORNO
+                           If BRA_VILLAGE <> "" Then .getField("B2.VILLAGE").Value = BRA_VILLAGE
+                           If BRA_ADDNO <> "" Then .getField("B2.ADDNO").Value = BRA_ADDNO
+                           If BRA_MOONO <> "" Then .getField("B2.MOONO").Value = BRA_MOONO
+                           If BRA_SOINAM <> "" Then .getField("B2.SOINAM").Value = BRA_SOINAM
+                           If BRA_YAEK <> "" Then .getField("B2.YAEK").Value = BRA_YAEK
+                           If BRA_THNNAM <> "" Then .getField("B2.THNNAM").Value = BRA_THNNAM
+                           If BRA_TAM_NAME <> "" Then .getField("B2.TAMNAM").Value = BRA_TAM_NAME
+                           If BRA_AMP_NAME <> "" Then .getField("B2.AMPNAM").Value = BRA_AMP_NAME
+                           If BRA_PROV_NAME <> "" Then .getField("B2.PROVNAM").Value = BRA_PROV_NAME
+                           If BRA_POSCOD <> "" Then .getField("B2.POSCOD").Value = BRA_POSCOD
+                           If BRA_TELNO <> "" Then .getField("B2.TELNO").Value = BRA_TELNO
+                           If BRA_EMAIL <> "" Then .getField("B2.EMAIL").Value = BRA_EMAIL
+                            
+                            If BRA_BUSLOCTYP >= "01" And BRA_BUSLOCTYP <= "06" Then
+                                AcroForm.getField("B2.T" & CInt(BRA_BUSLOCTYP)).Value = "Yes"
+                            End If
+                           End With
+
+                    ElseIf BRANO = 3 Then
+                       With AcroForm
+                           If BRA_BRANAM <> "" Then .getField("B3.BRANAM").Value = BRA_BRANAM
+                           If BRA_BLDGNAM <> "" Then .getField("B3.BLDGNAM").Value = BRA_BLDGNAM
+                           If BRA_ROOMNO <> "" Then .getField("B3.ROOMNO").Value = BRA_ROOMNO
+                           If BRA_FLOORNO <> "" Then .getField("B3.FLOORNO").Value = BRA_FLOORNO
+                           If BRA_VILLAGE <> "" Then .getField("B3.VILLAGE").Value = BRA_VILLAGE
+                           If BRA_ADDNO <> "" Then .getField("B3.ADDNO").Value = BRA_ADDNO
+                           If BRA_MOONO <> "" Then .getField("B3.MOONO").Value = BRA_MOONO
+                           If BRA_SOINAM <> "" Then .getField("B3.SOINAM").Value = BRA_SOINAM
+                           If BRA_YAEK <> "" Then .getField("B3.YAEK").Value = BRA_YAEK
+                           If BRA_THNNAM <> "" Then .getField("B3.THNNAM").Value = BRA_THNNAM
+                           If BRA_TAM_NAME <> "" Then .getField("B3.TAMNAM").Value = BRA_TAM_NAME
+                           If BRA_AMP_NAME <> "" Then .getField("B3.AMPNAM").Value = BRA_AMP_NAME
+                           If BRA_PROV_NAME <> "" Then .getField("B3.PROVNAM").Value = BRA_PROV_NAME
+                           If BRA_POSCOD <> "" Then .getField("B3.POSCOD").Value = BRA_POSCOD
+                           If BRA_TELNO <> "" Then .getField("B3.TELNO").Value = BRA_TELNO
+                           If BRA_EMAIL <> "" Then .getField("B3.EMAIL").Value = BRA_EMAIL
+                           
+                            If BRA_BUSLOCTYP >= "01" And BRA_BUSLOCTYP <= "06" Then
+                                AcroForm.getField("B3.T" & CInt(BRA_BUSLOCTYP)).Value = "Yes"
+                            End If
+                           End With
+
+                    Else
+                       With AcroForm
+                           If BRA_BRANAM <> "" Then .getField("B4.BRANAM").Value = BRA_BRANAM
+                           If BRA_BLDGNAM <> "" Then .getField("B4.BLDGNAM").Value = BRA_BLDGNAM
+                           If BRA_ROOMNO <> "" Then .getField("B4.ROOMNO").Value = BRA_ROOMNO
+                           If BRA_FLOORNO <> "" Then .getField("B4.FLOORNO").Value = BRA_FLOORNO
+                           If BRA_VILLAGE <> "" Then .getField("B4.VILLAGE").Value = BRA_VILLAGE
+                           If BRA_ADDNO <> "" Then .getField("B4.ADDNO").Value = BRA_ADDNO
+                           If BRA_MOONO <> "" Then .getField("B4.MOONO").Value = BRA_MOONO
+                           If BRA_SOINAM <> "" Then .getField("B4.SOINAM").Value = BRA_SOINAM
+                           If BRA_YAEK <> "" Then .getField("B4.YAEK").Value = BRA_YAEK
+                           If BRA_THNNAM <> "" Then .getField("B4.THNNAM").Value = BRA_THNNAM
+                           If BRA_TAM_NAME <> "" Then .getField("B4.TAMNAM").Value = BRA_TAM_NAME
+                           If BRA_AMP_NAME <> "" Then .getField("B4.AMPNAM").Value = BRA_AMP_NAME
+                           If BRA_PROV_NAME <> "" Then .getField("B4.PROVNAM").Value = BRA_PROV_NAME
+                           If BRA_POSCOD <> "" Then .getField("B4.POSCOD").Value = BRA_POSCOD
+                           If BRA_TELNO <> "" Then .getField("B4.TELNO").Value = BRA_TELNO
+                           If BRA_EMAIL <> "" Then .getField("B4.EMAIL").Value = BRA_EMAIL
+                           
+                            If BRA_BUSLOCTYP >= "01" And BRA_BUSLOCTYP <= "06" Then
+                                AcroForm.getField("B4.T" & CInt(BRA_BUSLOCTYP)).Value = "Yes"
+                            End If
+                           End With
+
+                            ' Stop the loop once the matching NID is found and processed
+                    Exit For
+                End If
+            End If
+        Next j
+                    
+'---------------------------------------------------------------------------------------------------
+                    ' Variables for data from Sheet3 (BRANO_DETAIL)
+                    Dim FIRDATTYP(1 To 3) As String
+                    Dim DATTYP1_D As String
+                    Dim DATTYP1_M As String
+                    Dim DATTYP1_Y As String
+                    Dim DATTYP3_D As String
+                    Dim DATTYP3_M As String
+                    Dim DATTYP3_Y As String
+                    Dim BUSCPTAMO As String
+                    Dim ESTMONINCAMO As String
+                    
+                    For k = 3 To lastRow3
+                        ' Check if the NID in Sheet3 matches the current NID being processed from Sheet1
+                        If ws3.Cells(k, "A").Value = NID Then
+                            ' Assign values from Sheet3 to corresponding variables
+                            FIRDATTYP(1) = ws3.Cells(k, "B").Value
+                            FIRDATTYP(2) = ws3.Cells(k, "C").Value
+                            DATTYP1_D = ws3.Cells(k, "D").Value
+                            DATTYP1_M = ws3.Cells(k, "E").Value
+                            DATTYP1_Y = ws3.Cells(k, "F").Value
+                            FIRDATTYP(3) = ws3.Cells(k, "G").Value
+                            DATTYP3_D = ws3.Cells(k, "H").Value
+                            DATTYP3_M = ws3.Cells(k, "I").Value
+                            DATTYP3_Y = ws3.Cells(k, "J").Value
+                            BUSCPTAMO = ws3.Cells(k, "K").Value
+                            ESTMONINCAMO = ws3.Cells(k, "L").Value
+                    
+                            ' Process FIRDATTYP fields
+                            If FIRDATTYP(1) <> "" Then
+                                AcroForm.getField("3.1(1)").Value = "Yes"
+                                AcroForm.getField("31").Value = "Yes"
+                            End If
+                    
+                            If FIRDATTYP(2) <> "" Then
+                                AcroForm.getField("3.1(2)").Value = "Yes"
+                                AcroForm.getField("31").Value = "Yes"
+                                AcroForm.getField("3.1(2)D").Value = DATTYP1_D
+                                AcroForm.getField("3.1(2)M").Value = DATTYP1_M
+                                AcroForm.getField("3.1(2)Y").Value = DATTYP1_Y
+                            End If
+                    
+                            If FIRDATTYP(3) <> "" Then
+                                AcroForm.getField("3.2").Value = "Yes"
+                                AcroForm.getField("3.2D").Value = DATTYP3_D
+                                AcroForm.getField("3.2M").Value = DATTYP3_M
+                                AcroForm.getField("3.2Y").Value = DATTYP3_Y
+                            End If
+                    
+                            ' Assign values to BUSCPTAMO and ESTMONINCAMO
+                            AcroForm.getField("BUSCPTAMO").Value = BUSCPTAMO
+                            AcroForm.getField("ESTMONINCAMO").Value = ESTMONINCAMO
+                    
+                            ' Process BUS fields using a loop
+                            For m = 1 To 12
+                                Dim busValue As String
+                                busValue = ws3.Cells(k, 12 + m).Value ' Column M to X corresponds to 13 to 24
+                                If busValue <> "" Then
+                                    If m <= 6 Then
+                                        AcroForm.getField("2.1").Value = "Yes"
+                                    End If
+                                    AcroForm.getField("BUS" & m).Value = "Yes"
+                                End If
+                            Next m
+                    
+                            ' Stop the loop once the matching NID is found and processed
+                            Exit For
+                        End If
+                    Next k
+'------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                    ' Process data from REGIS_DATAIL
+                    ' Variables for data from Sheet4 (ISIC_DETAIL)
+                    Dim ISICTYP1 As String
+                    Dim ISICTYP2 As String
+                    Dim ISICTYP3 As String
+                    Dim ISICTYP4 As String
+                    Dim ISICTYP5 As String
+                    Dim ISICTYP6 As String
+                    Dim ISICTYP7 As String
+                    Dim ISICTYP8 As String
+                    Dim ISICTYP9 As String
+                    Dim ISICTYP10 As String
+                    
+                    Dim ISICNAM1 As String
+                    Dim ISICNAM2 As String
+                    Dim ISICNAM3 As String
+                    Dim ISICNAM4 As String
+                    Dim ISICNAM5 As String
+                    Dim ISICNAM6 As String
+                    Dim ISICNAM7 As String
+                    Dim ISICNAM8 As String
+                    Dim ISICNAM9 As String
+                    Dim ISICNAM10 As String
+                    
+                    Dim ISICCOD1 As String
+                    Dim ISICCOD2 As String
+                    Dim ISICCOD3 As String
+                    Dim ISICCOD4 As String
+                    Dim ISICCOD5 As String
+                    Dim ISICCOD6 As String
+                    Dim ISICCOD7 As String
+                    Dim ISICCOD8 As String
+                    Dim ISICCOD9 As String
+                    Dim ISICCOD10 As String
+                    
+                    For l = 2 To lastRow4
+                        If ws4.Cells(l, "A").Value = NID Then
+                            ISICTYP1 = ws4.Cells(l, "B").Value
+                            ISICTYP2 = ws4.Cells(l, "C").Value
+                            ISICTYP3 = ws4.Cells(l, "D").Value
+                            ISICTYP4 = ws4.Cells(l, "E").Value
+                            ISICTYP5 = ws4.Cells(l, "F").Value
+                            ISICTYP6 = ws4.Cells(l, "G").Value
+                            ISICTYP7 = ws4.Cells(l, "H").Value
+                            ISICTYP8 = ws4.Cells(l, "I").Value
+                            ISICTYP9 = ws4.Cells(l, "J").Value
+                            ISICTYP10 = ws4.Cells(l, "K").Value
+                            ISICNAM1 = ws4.Cells(l, "L").Value
+                            ISICNAM2 = ws4.Cells(l, "M").Value
+                            ISICNAM3 = ws4.Cells(l, "N").Value
+                            ISICNAM4 = ws4.Cells(l, "O").Value
+                            ISICNAM5 = ws4.Cells(l, "P").Value
+                            ISICNAM6 = ws4.Cells(l, "Q").Value
+                            ISICNAM7 = ws4.Cells(l, "R").Value
+                            ISICNAM8 = ws4.Cells(l, "S").Value
+                            ISICNAM9 = ws4.Cells(l, "T").Value
+                            ISICNAM10 = ws4.Cells(l, "U").Value
+                            ISICCOD1 = ws4.Cells(l, "V").Value
+                            ISICCOD2 = ws4.Cells(l, "W").Value
+                            ISICCOD3 = ws4.Cells(l, "X").Value
+                            ISICCOD4 = ws4.Cells(l, "Y").Value
+                            ISICCOD5 = ws4.Cells(l, "Z").Value
+                            ISICCOD6 = ws4.Cells(l, "AA").Value
+                            ISICCOD7 = ws4.Cells(l, "AB").Value
+                            ISICCOD8 = ws4.Cells(l, "AC").Value
+                            ISICCOD9 = ws4.Cells(l, "AD").Value
+                            ISICCOD10 = ws4.Cells(l, "AE").Value
+
+                            With AcroForm
+                                'Fill ISIC TYP
+                               If ISICTYP1 <> "" Then .getField("ISICTYP1").Value = ISICTYP1
+                               If ISICTYP2 <> "" Then .getField("ISICTYP2").Value = ISICTYP2
+                               If ISICTYP3 <> "" Then .getField("ISICTYP3").Value = ISICTYP3
+                               If ISICTYP4 <> "" Then .getField("ISICTYP4").Value = ISICTYP4
+                               If ISICTYP5 <> "" Then .getField("ISICTYP5").Value = ISICTYP5
+                               If ISICTYP6 <> "" Then .getField("ISICTYP6").Value = ISICTYP6
+                               If ISICTYP7 <> "" Then .getField("ISICTYP7").Value = ISICTYP7
+                               If ISICTYP8 <> "" Then .getField("ISICTYP8").Value = ISICTYP8
+                               If ISICTYP9 <> "" Then .getField("ISICTYP9").Value = ISICTYP9
+                               If ISICTYP10 <> "" Then .getField("ISICTYP10").Value = ISICTYP10
+                                'Fill ISIC NAM
+                               If ISICNAM1 <> "" Then .getField("ISICNAM1").Value = ISICNAM1
+                               If ISICNAM2 <> "" Then .getField("ISICNAM2").Value = ISICNAM2
+                               If ISICNAM3 <> "" Then .getField("ISICNAM3").Value = ISICNAM3
+                               If ISICNAM4 <> "" Then .getField("ISICNAM4").Value = ISICNAM4
+                               If ISICNAM5 <> "" Then .getField("ISICNAM5").Value = ISICNAM5
+                               If ISICNAM6 <> "" Then .getField("ISICNAM6").Value = ISICNAM6
+                               If ISICNAM7 <> "" Then .getField("ISICNAM7").Value = ISICNAM7
+                               If ISICNAM8 <> "" Then .getField("ISICNAM8").Value = ISICNAM8
+                               If ISICNAM9 <> "" Then .getField("ISICNAM9").Value = ISICNAM9
+                               If ISICNAM10 <> "" Then .getField("ISICNAM10").Value = ISICNAM10
+                                'Fill ISIC COD
+                               If ISICCOD1 <> "" Then .getField("ISICCOD1").Value = ISICCOD1
+                               If ISICCOD2 <> "" Then .getField("ISICCOD2").Value = ISICCOD2
+                               If ISICCOD3 <> "" Then .getField("ISICCOD3").Value = ISICCOD3
+                               If ISICCOD4 <> "" Then .getField("ISICCOD4").Value = ISICCOD4
+                               If ISICCOD5 <> "" Then .getField("ISICCOD5").Value = ISICCOD5
+                               If ISICCOD6 <> "" Then .getField("ISICCOD6").Value = ISICCOD6
+                               If ISICCOD7 <> "" Then .getField("ISICCOD7").Value = ISICCOD7
+                               If ISICCOD8 <> "" Then .getField("ISICCOD8").Value = ISICCOD8
+                               If ISICCOD9 <> "" Then .getField("ISICCOD9").Value = ISICCOD9
+                               If ISICCOD10 <> "" Then .getField("ISICCOD10").Value = ISICCOD10
+                            End With
+                            
+                            ' Stop the loop once the matching NID is found and processed
+                            Exit For
+                        End If
+                    Next l
+'------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ ' Save the filled PDF
+        Dim FileNumber As Integer
+        Dim FileName As String
+        Dim folderPath As String
+        Dim subfolderPath As String
+        
+    ' Check the first two digits of SUPOFFCOD
+    If Left(SUPOFFCOD, 2) < "04" Then
+        ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+        FileName = folderPath & SUPOFFCOD & "-PP01-P-"
+    Else
+        ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
+        folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
+        FileName = folderPath & OFFCOD & "-PP01-P-"
+    End If
+
+    ' Check if the folder exists, if not, create it
+    If Dir(folderPath, vbDirectory) = "" Then
+        MkDir folderPath
+    End If
+
+    ' Check for existing files and generate a unique name
+    FileNumber = 1
+    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+        FileNumber = FileNumber + 1
+    Loop
+    
+          If FileNumber > 10 Then
+            subfolderPath = folderPath & "spare\"
+            If Dir(subfolderPath, vbDirectory) = "" Then
+                MkDir subfolderPath
+            End If
+            FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
+        End If
+    
+    ' Construct the final file name
+    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+
+    ' Save the PDF file
+    Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
+    AcroPDDoc.Save 1, OutputPDF
+    AcroAVDoc.Close False
+
+    ' Count the number of PDFs generated
+    pdfCount = pdfCount + 1
+
+        ' Release Acrobat objects to free memory
+        Set AcroForm = Nothing
+        Set AcroPDDoc = Nothing
+        If Not AcroAVDoc Is Nothing Then
+            AcroAVDoc.Close False
+        End If
+        Set AcroAVDoc = Nothing
+
+    End If
+
+    On Error GoTo 0 ' Reset error handling after critical code
+    
+                ' Log progress
+            Print #2, Format(Now, "hh:mm:ss") & " - Processing NID: " & NID
+            
+            ' Error handling
+            If Err.NUMBER <> 0 Then
+                Print #2, "Error encountered: " & Err.Description & " for NID: " & NID
+                Err.Clear
+            End If
+        End If
+        
+NextIteration:
+    Next i
+    
+NormalExit:
+    ' Cleanup
+    Close #2
+    If Not AcroApp Is Nothing Then AcroApp.Exit
+    Set AcroApp = Nothing
+    Call RestoreExcelSettings
+    
+    ' Display completion message
+    MsgBox "PDF Generation Complete" & vbCrLf & _
+           "Total PDFs generated: " & pdfCount & vbCrLf & _
+           "Please check process_log.txt for details", vbInformation
+    Exit Sub
+
+ErrorHandler:
+    ' Log error
+    Print #2, "Error processing NID " & NID & ": " & Err.Description
+    Resume Next
+End Sub
+
+
