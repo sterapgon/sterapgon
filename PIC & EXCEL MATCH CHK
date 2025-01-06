@@ -1,0 +1,129 @@
+Sub CompareDLNImagesWithNIDDetail()
+    ' Declare variables
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim folderPath As String
+    Dim fileName As String
+    Dim excelNIDs As Collection
+    Dim fileNIDs As Collection
+    Dim NID As String
+    Dim varItem As Variant  ' Added for For Each loop
+    
+    ' Initialize collections and variables
+    Set excelNIDs = New Collection
+    Set fileNIDs = New Collection
+    Set ws = ThisWorkbook.Sheets("NID_DETAIL")
+    lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
+    folderPath = "C:\Users\Lenovo\Desktop\AUTO FROM PDF PP01 PAPER\DLNPICTURE\"
+    
+    ' Create log file
+    Dim logPath As String
+    Dim fileNum As Integer
+    logPath = ThisWorkbook.Path & "\nid_comparison_log.txt"
+    fileNum = FreeFile
+    
+    Open logPath For Output As fileNum
+    Print #fileNum, "NID Comparison Report - " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    Print #fileNum, String(70, "-")
+    
+    ' Show progress bar
+    Application.ScreenUpdating = False
+    
+    ' First: Collect all NIDs from Excel
+    Print #fileNum, vbNewLine & "Collecting NIDs from Excel..."
+    For i = 2 To lastRow
+        NID = ws.Cells(i, "A").Value
+        If NID <> "" Then
+            ' Add to collection with error handling for duplicates
+            On Error Resume Next
+            excelNIDs.Add NID, NID
+            If Err.NUMBER = 0 Then
+                ' NID added successfully
+            ElseIf Err.NUMBER = 457 Then
+                ' Duplicate NID found in Excel
+                Print #fileNum, "Warning: Duplicate NID found in Excel: " & NID & " at row " & i
+            End If
+            On Error GoTo 0
+        End If
+    Next i
+    
+    ' Second: Collect all NIDs from image files
+    Print #fileNum, vbNewLine & "Collecting NIDs from image files..."
+    fileName = Dir(folderPath & "*.jpg")
+    Do While fileName <> ""
+        ' Extract NID from filename (removing .jpg extension)
+        NID = Left(fileName, Len(fileName) - 4)
+        
+        ' Add to collection
+        On Error Resume Next
+        fileNIDs.Add NID, NID
+        If Err.NUMBER = 0 Then
+            ' NID added successfully
+        ElseIf Err.NUMBER = 457 Then
+            ' Duplicate file found
+            Print #fileNum, "Warning: Duplicate image file found: " & fileName
+        End If
+        On Error GoTo 0
+        
+        fileName = Dir()
+    Loop
+    
+    ' Compare collections and write results
+    Print #fileNum, vbNewLine & "Comparison Results:"
+    Print #fileNum, String(70, "-")
+    
+    ' Check for NIDs in folder but not in Excel
+    Print #fileNum, vbNewLine & "1. Images found in folder but no matching NID in Excel:"
+    Dim missingInExcel As Long
+    missingInExcel = 0
+    
+    For Each varItem In fileNIDs
+        On Error Resume Next
+        Dim testNID As String
+        testNID = excelNIDs(CStr(varItem))
+        If Err.NUMBER <> 0 Then
+            Print #fileNum, "   - " & varItem & ".jpg"
+            missingInExcel = missingInExcel + 1
+        End If
+        On Error GoTo 0
+    Next varItem
+    
+    ' Check for NIDs in Excel but no image
+    Print #fileNum, vbNewLine & "2. NIDs in Excel but no matching image file:"
+    Dim missingImages As Long
+    missingImages = 0
+    
+    For Each varItem In excelNIDs
+        On Error Resume Next
+        testNID = fileNIDs(CStr(varItem))
+        If Err.NUMBER <> 0 Then
+            Print #fileNum, "   - " & varItem
+            missingImages = missingImages + 1
+        End If
+        On Error GoTo 0
+    Next varItem
+    
+    ' Write summary
+    Print #fileNum, vbNewLine & String(70, "-")
+    Print #fileNum, "Summary:"
+    Print #fileNum, "Total NIDs in Excel: " & excelNIDs.count
+    Print #fileNum, "Total image files: " & fileNIDs.count
+    Print #fileNum, "Images without matching NID in Excel: " & missingInExcel
+    Print #fileNum, "NIDs without matching image: " & missingImages
+    Print #fileNum, vbNewLine & "Report generated at: " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    
+    Close fileNum
+    
+    ' Reset Excel settings
+    Application.ScreenUpdating = True
+    
+    ' Show completion message
+    MsgBox "NID Comparison completed" & vbCrLf & _
+           "NIDs in Excel: " & excelNIDs.count & vbCrLf & _
+           "Image files found: " & fileNIDs.count & vbCrLf & _
+           "Images without matching NID: " & missingInExcel & vbCrLf & _
+           "NIDs without images: " & missingImages & vbCrLf & _
+           "Please check 'nid_comparison_log.txt' for details", vbInformation
+End Sub
+

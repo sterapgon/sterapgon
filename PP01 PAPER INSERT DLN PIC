@@ -73,7 +73,7 @@ Sub FillPDFWithMultipleSheet_PP01()
         Dim NID As String
         NID = ws1.Cells(i, "A").Value
         Dim DLNPath As String
-        DLNPath = "C:\Users\Lenovo\Desktop\AUTO FROM PDF PP01 PAPER\DLNPICTURE\" & NID & ".jpg"
+        DLNPath = "C:\Users\Lenovo\Desktop\AUTO FORM (INSERT DLN PIC)\AUTO FROM PDF PP01+PP011 PAPER\DLNPICTURE\" & NID & ".jpg"
         
         If Dir(DLNPath) = "" Then
             Print #fileNum, "Missing DLN file for NID: " & NID
@@ -192,9 +192,12 @@ Sub FillPDFWithMultipleSheet_PP01()
         ' Check if NID is valid using error handling
         On Error Resume Next
         Dim isValid As Boolean
+
         isValid = False
+
         Dim testValid As String
         testValid = validNIDs(CStr(NID))
+        
         If Err.NUMBER = 0 Then isValid = True
         Err.Clear
         On Error GoTo ErrorHandler
@@ -212,7 +215,7 @@ Sub FillPDFWithMultipleSheet_PP01()
                 Set JSObj = AcroPDDoc.GetJSObject
                 
                 ' Import DLN image
-                JSObj.getField("DLN").buttonImportIcon ("C:/Users/Lenovo/Desktop/AUTO FROM PDF PP01 PAPER/DLNPICTURE/" & NID & ".jpg")
+                JSObj.getField("DLN").buttonImportIcon ("C:\Users\Lenovo\Desktop\AUTO FORM (INSERT DLN PIC)\AUTO FROM PDF PP01+PP011 PAPER\DLNPICTURE\" & NID & ".jpg")
                 
     If LTOFLG = 1 Then
         AcroForm.getField("LTO_CHK").Value = "Yes"
@@ -643,7 +646,7 @@ Sub FillPDFWithMultipleSheet_PP01()
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  ' Save the filled PDF
         Dim FileNumber As Integer
-        Dim FileName As String
+        Dim fileName As String
         Dim folderPath As String
         Dim subfolderPath As String
         
@@ -651,11 +654,11 @@ Sub FillPDFWithMultipleSheet_PP01()
     If Left(SUPOFFCOD, 2) < "04" Then
         ' Case when SUPOFFCOD < "04", use SUPOFFCOD for the file name
         folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
-        FileName = folderPath & SUPOFFCOD & "-PP01-P-"
+        fileName = folderPath & SUPOFFCOD & "-PP01+PP011-P-"
     Else
         ' Case when SUPOFFCOD >= "04", use OFFCOD for the file name
         folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
-        FileName = folderPath & OFFCOD & "-PP01-P-"
+        fileName = folderPath & OFFCOD & "-PP01+PP011-P-"
     End If
 
     ' Check if the folder exists, if not, create it
@@ -665,7 +668,7 @@ Sub FillPDFWithMultipleSheet_PP01()
 
     ' Check for existing files and generate a unique name
     FileNumber = 1
-    Do While Dir(FileName & Format(FileNumber, "0000") & ".pdf") <> ""
+    Do While Dir(fileName & Format(FileNumber, "0000") & ".pdf") <> ""
         FileNumber = FileNumber + 1
     Loop
     
@@ -674,11 +677,11 @@ Sub FillPDFWithMultipleSheet_PP01()
             If Dir(subfolderPath, vbDirectory) = "" Then
                 MkDir subfolderPath
             End If
-            FileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
+            fileName = subfolderPath & SUPOFFCOD & "-" & NID & "-"
         End If
     
     ' Construct the final file name
-    OutputPDF = FileName & Format(FileNumber, "0000") & ".pdf"
+    OutputPDF = fileName & Format(FileNumber, "0000") & ".pdf"
 
     ' Save the PDF file
     Debug.Print "PDF will be saved at: " & " NID :" & NID & " "; OutputPDF
@@ -731,5 +734,3 @@ ErrorHandler:
     Print #2, "Error processing NID " & NID & ": " & Err.Description
     Resume Next
 End Sub
-
-
