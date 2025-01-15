@@ -1,0 +1,57 @@
+Sub DeleteMatchingRowsWithDebug()
+    Dim wsOld As Worksheet
+    Dim wsTarget As Worksheet
+    Dim oldData As Range
+    Dim targetRange As Range
+    Dim cell As Range
+    Dim findCell As Range
+    Dim lastRowOld As Long
+    Dim lastRowTarget As Long
+    Dim targetValue As String
+    Dim deletedCount As Long
+
+    ' Initialize the deleted rows counter
+    deletedCount = 0
+
+    ' Set worksheets OLD and TDTEPP09
+    Set wsOld = ThisWorkbook.Sheets("OLD")
+    Set wsTarget = ThisWorkbook.Sheets("TDTEPP09")
+
+    Debug.Print "Starting data comparison and deletion process..."
+    Debug.Print "Source Sheet: " & wsOld.Name
+    Debug.Print "Target Sheet: " & wsTarget.Name
+
+    ' Find the last row in the OLD sheet
+    lastRowOld = wsOld.Cells(wsOld.Rows.Count, "A").End(xlUp).Row
+    ' Find the last row in the TDTEPP09 sheet
+    lastRowTarget = wsTarget.Cells(wsTarget.Rows.Count, "M").End(xlUp).Row
+
+    Debug.Print "Last Row in OLD sheet (Column A): " & lastRowOld
+    Debug.Print "Last Row in TDTEPP09 sheet (Column M): " & lastRowTarget
+
+    ' Define the range of data in the OLD sheet
+    Set oldData = wsOld.Range("A2:A" & lastRowOld)
+    ' Define the range of data in the TDTEPP09 sheet
+    Set targetRange = wsTarget.Range("M1:M" & lastRowTarget)
+
+    ' Loop through each cell in the OLD sheet data
+    For Each cell In oldData
+        targetValue = cell.Value
+        Debug.Print "Checking value: " & targetValue
+
+        ' Find matching value in the TDTEPP09 sheet
+        Set findCell = targetRange.Find(What:=targetValue, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not findCell Is Nothing Then
+            Debug.Print "Match found in Row: " & findCell.Row & " (Value: " & targetValue & ")"
+            ' Delete the row if a match is found
+            wsTarget.Rows(findCell.Row).Delete
+            deletedCount = deletedCount + 1
+        Else
+            Debug.Print "No match found for value: " & targetValue
+        End If
+    Next cell
+
+    Debug.Print "Deletion process complete. Total rows deleted: " & deletedCount
+    MsgBox "Data deletion is complete! Total rows deleted: " & deletedCount, vbInformation
+End Sub
+

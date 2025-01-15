@@ -1,0 +1,235 @@
+describe("Pnd72 - Officer", () => {
+    const groupSelect = "SO-03-13";
+    let offCode = "";
+    let url = "";
+    const updatedData2 = [];
+    const fileName = "add ip vat-แก้ไข.xlsx";
+  
+    function login(code) {
+      cy.log("=== เริ่มขั้นตอนการล็อกอิน ===");
+      cy.log("code:", code);
+      cy.viewport(1280, 720);
+      cy.clearAllSessionStorage();
+      cy.log("ล้าง Session Storage เรียบร้อย");
+      cy.visit("https://vsintra-uat.rd.go.th/rd-sso-login-web/#/");
+  
+      cy.get('[formControlName="systemId"]').click();
+      cy.get("div > span")
+        .contains("ระบบพิจารณาภาษีมูลค่าเพิ่มและภาษีธุรกิจเฉพาะ")
+        .click();
+  
+      cy.get('[formControlName="systemUserGroup"]').select(groupSelect);
+  
+      cy.get("label[for='checkbox-6']").click();
+  
+      cy.get('[formControlName="userRDOfficeCode"]')
+        .should("be.visible")
+        .wait(200);
+      cy.get('[formControlName="userRDOfficeCode"]').clear().type(code);
+  
+      cy.get('[formControlName="userOfficeCode"]').should("be.visible").wait(200);
+      cy.get('[formControlName="userOfficeCode"]').clear().type(code);
+  
+      cy.get('[formControlName="ClientLocation"]').should("be.visible").wait(200);
+      cy.get('[formControlName="ClientLocation"]').clear().type(code);
+  
+      cy.window().then((win) => {
+        cy.stub(win, "open").callsFake((urlFake) => {
+          console.log("Intercepted URL:", urlFake);
+          url = urlFake;
+        });
+      });
+      cy.get('button[type="submit"]').invoke("removeAttr", "target").click();
+      console.log("end before");
+  
+      cy.then(() => {
+        if (url) {
+          const encodedUrl = encodeURI(url);
+          cy.visit(encodedUrl);
+        }
+      });
+    }
+  
+    function handleMenu2(nid) {
+      return new Cypress.Promise((resolve) => {
+        let menu2Pass = false;
+        cy.log("=== เริ่มการจัดการเมนู 2 ===");
+        cy.log(`กำลังค้นหาข้อมูลด้วย NID: ${nid}`);
+  
+        cy.get("body").then(($body) => {
+          if ($body.find('[formControlName="searchnid"]').length < 0) {
+            if ($body.find("#collapsearch").length > 0) {
+              cy.get("#collapsearch")
+                .should('exist')
+                .click();
+            }
+          }
+        });
+  
+        cy.get('[formControlName="searchnid"]')
+          .should('exist')
+          .invoke("val", nid)
+          .trigger("input", { force: true });
+  
+        cy.get("form button")
+          .contains("ค้นหา")
+          .should("be.visible")
+          .wait(2000)
+          .click()
+          .wait(2000);
+
+        cy.log("เลื่อนตารางไปทางขวาเพื่อดูปุ่มแก้ไข");
+        cy.get(".table-scroll")
+          .should('exist')
+          .scrollTo("right")
+          .wait(1000);
+  
+        cy.get("body").then(($body) => {
+          if ($body.find('div.table-fixed-col tr:nth-of-type(1) span:contains("edit")').length > 0) {
+            cy.wait(1000);
+            cy.get("div.table-fixed-col tr:nth-of-type(1) span")
+              .contains("edit")
+              .should('exist')
+              .scrollIntoView()
+              .should("be.visible")
+              .wait(500)
+              .click();
+  
+            cy.get("div.box-content button")
+              .contains("ใบแนบ คพ.1")
+              .should('exist')
+              .click();
+  
+            cy.get(".modal-content div.col-lg-9 > div label")
+              .contains("คืนเงิน")
+              .should("be.visible")
+              .wait(500)
+              .click();
+  
+            cy.get("#exampleModal_2 button.btn-primary")
+              .contains("บันทึกใบแนบ คพ.1")
+              .should("be.visible")
+              .wait(500)
+              .click();
+  
+            cy.wait(500);
+            cy.get("body").then(($body) => {
+              if ($body.text().includes("ต้องการยืนยันการเปลี่ยนแปลงคำสั่งการหรือไม่")) {
+                cy.contains("ต้องการยืนยันการเปลี่ยนแปลงคำสั่งการหรือไม่")
+                  .parents("modal-container")
+                  .find("button")
+                  .contains("ตกลง")
+                  .should("be.visible")
+                  .wait(500)
+                  .click({ force: true });
+              } else {
+                cy.log("ข้อความไม่พบในหน้าเว็บ ข้ามการคลิก...");
+              }
+            });
+  
+            cy.get('label[for="radio-21"]')
+              .should("be.visible")
+              .wait(200)
+              .click({ force: true });
+  
+            cy.get("div.btn-footer > button")
+              .contains("บันทึก")
+              .should("be.visible")
+              .wait(200)
+              .click();
+  
+            cy.get("modal-container div button")
+              .contains("ตกลง")
+              .should("be.visible")
+              .wait(500)
+              .click({ force: true })
+              .wait(500);
+  
+            cy.contains("บันทึกข้อมูลสำเร็จ")
+              .parents("modal-container")
+              .wait(200)
+              .find("button")
+              .contains("ตกลง")
+              .should("be.visible")
+              .wait(200)
+              .click({ force: true });
+  
+            cy.get("div.btn-footer > button")
+              .contains("ยกเลิก")
+              .should("be.visible")
+              .wait(200)
+              .click();
+  
+            menu2Pass = true;
+            cy.log("menu2Pass", menu2Pass);
+          } else {
+            menu2Pass = false;
+            cy.log("menu2Pass", menu2Pass);
+            cy.wait(200);
+            cy.get(".modal-footer button")
+              .contains("ตกลง")
+              .should('exist')
+              .click({ force: true });
+          }
+  
+          cy.log("result, menu2Pass ", menu2Pass);
+          resolve(menu2Pass);
+        });
+      });
+    }
+  
+    it("handles menu", () => {
+    cy.log("=== เริ่มการทดสอบ ===");
+      cy.task("checkFileExists", fileName).then((exists) => {
+        if (!exists) {
+          cy.log("File exists, reading...");
+          cy.readExcelFile(fileName).then((data) => {
+            cy.log("File content:", JSON.stringify(data));
+  
+            data.forEach((row, index) => {
+              cy.log("row.nid content:", row.NID);
+              cy.log("row.code content:", row.DLNBATOFFCOD);
+  
+              if (offCode != row.DLNBATOFFCOD) {
+                cy.log("มีการเปลี่ยนแปลงรหัสสำนักงาน ทำการล็อกอินใหม่");
+                login(row.DLNBATOFFCOD);
+                offCode = row.DLNBATOFFCOD;
+                cy.wait(500);
+                cy.get("span").contains("พิจารณาคืนภาษี").click();
+                cy.wait(200);
+                cy.contains("ข้อมูลการปฏิบัติการภาษีมูลค่าเพิ่ม").click();
+                cy.wait(200);
+                cy.get("a").contains(
+                  "การพิจารณารายงานการวิเคราะห์แบบแสดงรายการภาษีมูลค่าเพิ่มที่ขอคืนเป็นเงินสด (คพ.1)"
+                ).click();
+                cy.wait(200);
+              }
+
+              cy.log("เริ่มการจัดการข้อมูล");
+              handleMenu2(row.NID).then((menu2Pass) => {
+                updatedData2.push({
+                  NID: row.NID,
+                  menu2Status: menu2Pass ? "Success" : "Failed"
+                });
+                cy.log(`บันทึกผลการทำงาน: NID ${row.NID} - ${menu2Pass ? "สำเร็จ" : "ไม่สำเร็จ"}`);
+                cy.writeToExcel(updatedData2, "ResultDataLoginUser1Menu2.xlsx");
+                cy.log("บันทึกผลลงไฟล์ Excel เรียบร้อย");
+                console.log(
+                  `handleMenu2 Index: ${index}`,
+                  " row.nid: ",
+                  row.NID,
+                  " row.code: ",
+                  row.DLNBATOFFCOD,
+                  "updatedData2: ",
+                  updatedData2
+                );
+              });
+            });
+          });
+        } else {
+          cy.log("File does not exist!");
+        }
+      });
+    });
+  });
+  
