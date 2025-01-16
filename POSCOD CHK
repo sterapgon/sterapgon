@@ -1,0 +1,48 @@
+Sub UpdateDataFromTRDBPOS()
+    Dim wsSource As Worksheet
+    Dim wsTarget As Worksheet
+    Dim sourceRow As Long
+    Dim lastRowSource As Long
+    Dim searchValue As String
+    Dim foundCell As Range
+    Dim targetValue As String
+    
+    ' Define worksheets
+    Set wsSource = ThisWorkbook.Sheets("MAIN (2)")
+    Set wsTarget = ThisWorkbook.Sheets("TRDBPOS")
+    
+    ' Debug: Start process
+    Debug.Print "Starting data update process..."
+    Debug.Print "Source sheet: " & wsSource.Name
+    Debug.Print "Target sheet: " & wsTarget.Name
+    
+    ' Find the last row in column W of the MAIN (2) sheet
+    lastRowSource = wsSource.Cells(wsSource.Rows.Count, "W").End(xlUp).Row
+    Debug.Print "Last row in column W of source sheet: " & lastRowSource
+    
+    ' Loop through rows in the MAIN (2) sheet starting from row 2
+    For sourceRow = 2 To lastRowSource
+        searchValue = wsSource.Cells(sourceRow, "W").Value
+        Debug.Print "Processing row " & sourceRow & " with search value: " & searchValue
+        
+        ' Search for the value in column A of the TRDBPOS sheet
+        Set foundCell = wsTarget.Columns("A").Find(What:=searchValue, LookIn:=xlValues, LookAt:=xlWhole)
+        
+        ' If the value is found, get the value from column B and put it in column AC of the MAIN (2) sheet
+        If Not foundCell Is Nothing Then
+            targetValue = foundCell.Offset(0, 1).Value ' Value in column B
+            wsSource.Cells(sourceRow, "AC").Value = targetValue
+            wsSource.Cells(sourceRow, "AC").Interior.Color = xlNone ' Clear background color
+            Debug.Print "Found match in target sheet. Value from column B: " & targetValue
+        Else
+            ' If the value is not found, clear the cell in column AC and set background color to yellow
+            wsSource.Cells(sourceRow, "AC").Value = ""
+            wsSource.Cells(sourceRow, "AC").Interior.Color = RGB(255, 255, 0) ' Yellow
+            Debug.Print "No match found in target sheet for value: " & searchValue
+        End If
+    Next sourceRow
+    
+    ' Debug: End process
+    Debug.Print "Data update process completed."
+    MsgBox "Data update completed!", vbInformation
+End Sub

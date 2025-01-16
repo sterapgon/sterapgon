@@ -1,0 +1,115 @@
+Sub OptimizeExcelSettings()
+    With Application
+        ' Store current settings
+        SaveCalc = .Calculation
+        SaveEvents = .EnableEvents
+        SaveUpdating = .ScreenUpdating
+        SaveDisplayAlerts = .DisplayAlerts
+        SaveEnableAnimations = .EnableAnimations
+        
+        ' Optimize settings
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .ScreenUpdating = False
+        .DisplayAlerts = False
+        .EnableAnimations = False
+    End With
+End Sub
+
+Sub RestoreExcelSettings()
+    With Application
+        .Calculation = SaveCalc
+        .EnableEvents = SaveEvents
+        .ScreenUpdating = SaveUpdating
+        .DisplayAlerts = SaveDisplayAlerts
+        .EnableAnimations = SaveEnableAnimations
+        
+        ' Force update
+        .ScreenUpdating = True
+    End With
+End Sub
+Sub UpdateSupData()
+
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    
+    Dim wsSource As Worksheet
+    Dim wsTarget As Worksheet
+    Dim sourceRow As Long
+    Dim lastRowSource As Long
+    Dim searchValueN As String
+    Dim searchValueP As String
+    Dim searchValueR As String
+    Dim foundCell As Range
+    Dim targetValue As String
+    
+    ' Define worksheets
+    On Error GoTo ErrorHandler ' Handle unexpected errors
+    Set wsSource = ThisWorkbook.Sheets("BRANO_DETAIL")
+    Set wsTarget = ThisWorkbook.Sheets("TRDBMOI")
+    
+    ' Debug: Start process
+    Debug.Print "Starting sup data update process..."
+    Debug.Print "Source sheet: " & wsSource.Name
+    Debug.Print "Target sheet: " & wsTarget.Name
+    
+    ' Find the last row in column N of the BRAN sheet
+    lastRowSource = wsSource.Cells(wsSource.Rows.count, "A").End(xlUp).Row
+    Debug.Print "Last row in column N of source sheet: " & lastRowSource
+    
+    ' Loop through rows in the BRAN sheet starting from row 2
+    For sourceRow = 2 To lastRowSource
+        Debug.Print "Processing row " & sourceRow
+        
+        ' Get values from columns N, P, R
+        searchValueN = wsSource.Cells(sourceRow, "N").Value
+        searchValueP = wsSource.Cells(sourceRow, "P").Value
+        searchValueR = wsSource.Cells(sourceRow, "R").Value
+        
+        Debug.Print "Search values - N: " & searchValueN & ", P: " & searchValueP & ", R: " & searchValueR
+        
+        ' Process for column N -> O
+        Set foundCell = wsTarget.Columns("A").Find(What:=searchValueN, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not foundCell Is Nothing Then
+            targetValue = foundCell.Offset(0, 1).Value ' Value in column B
+            wsSource.Cells(sourceRow, "O").Value = targetValue
+            Debug.Print "Found match for N. Value: " & targetValue
+        Else
+            wsSource.Cells(sourceRow, "O").Value = ""
+            Debug.Print "No match found for N: " & searchValueN
+        End If
+        
+        ' Process for column P -> Q
+        Set foundCell = wsTarget.Columns("A").Find(What:=searchValueP, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not foundCell Is Nothing Then
+            targetValue = foundCell.Offset(0, 1).Value ' Value in column B
+            wsSource.Cells(sourceRow, "Q").Value = targetValue
+            Debug.Print "Found match for P. Value: " & targetValue
+        Else
+            wsSource.Cells(sourceRow, "Q").Value = ""
+            Debug.Print "No match found for P: " & searchValueP
+        End If
+        
+        ' Process for column R -> S
+        Set foundCell = wsTarget.Columns("A").Find(What:=searchValueR, LookIn:=xlValues, LookAt:=xlWhole)
+        If Not foundCell Is Nothing Then
+            targetValue = foundCell.Offset(0, 1).Value ' Value in column B
+            wsSource.Cells(sourceRow, "S").Value = targetValue
+            Debug.Print "Found match for R. Value: " & targetValue
+        Else
+            wsSource.Cells(sourceRow, "S").Value = ""
+            Debug.Print "No match found for R: " & searchValueR
+        End If
+    Next sourceRow
+    
+    ' Debug: End process
+    Debug.Print "Sup data update process completed successfully."
+    MsgBox "Sup data update completed!", vbInformation
+    Call RestoreExcelSettings
+    Exit Sub
+
+ErrorHandler:
+    Debug.Print "Error occurred: " & Err.Description & " at line " & Erl
+    MsgBox "An error occurred: " & Err.Description, vbCritical
+    
+End Sub

@@ -1,3 +1,33 @@
+Sub OptimizeExcelSettings()
+    With Application
+        ' Store current settings
+        SaveCalc = .Calculation
+        SaveEvents = .EnableEvents
+        SaveUpdating = .ScreenUpdating
+        SaveDisplayAlerts = .DisplayAlerts
+        SaveEnableAnimations = .EnableAnimations
+        
+        ' Optimize settings
+        .Calculation = xlCalculationManual
+        .EnableEvents = False
+        .ScreenUpdating = False
+        .DisplayAlerts = False
+        .EnableAnimations = False
+    End With
+End Sub
+
+Sub RestoreExcelSettings()
+    With Application
+        .Calculation = SaveCalc
+        .EnableEvents = SaveEvents
+        .ScreenUpdating = SaveUpdating
+        .DisplayAlerts = SaveDisplayAlerts
+        .EnableAnimations = SaveEnableAnimations
+        
+        ' Force update
+        .ScreenUpdating = True
+    End With
+End Sub
 Sub FillPDFPP012()
     Dim AcroApp As Object
     Dim AcroAVDoc As Object
@@ -124,6 +154,10 @@ Sub FillPDFPP012()
     Set ws3 = ThisWorkbook.Sheets("BRAN")
     Set ws4 = ThisWorkbook.Sheets("PART")
     
+    ' Optimize Excel settings
+    Call OptimizeExcelSettings
+    Debug.Print "Excel settings optimized"
+    
     lastRow1 = ws1.Cells(ws1.Rows.count, "A").End(xlUp).Row
     lastRow2 = ws2.Cells(ws2.Rows.count, "A").End(xlUp).Row
     lastRow3 = ws3.Cells(ws3.Rows.count, "A").End(xlUp).Row
@@ -224,12 +258,12 @@ Sub FillPDFPP012()
                 .getField("FIRNAM").Value = TITNAM & " " & FIRNAM
                 .getField("BIZLICNO").Value = CERTNO
                 .getField("IMPIDDAT").Value = IMPIDDAT
-                .getField("FIRDAT.D").Value = FRIDAT_D
-                .getField("FIRDAT.M").Value = FRIDAT_M
-                .getField("FIRDAT.Y").Value = FRIDAT_Y
-                .getField("LASDAT.D").Value = LASDAT_D
-                .getField("LASDAT.M").Value = LASDAT_M
-                .getField("LASDAT.Y").Value = LASDAT_Y
+                '.getField("FIRDAT.D").Value = FRIDAT_D
+                '.getField("FIRDAT.M").Value = FRIDAT_M
+                '.getField("FIRDAT.Y").Value = FRIDAT_Y
+                '.getField("LASDAT.D").Value = LASDAT_D
+                '.getField("LASDAT.M").Value = LASDAT_M
+                '.getField("LASDAT.Y").Value = LASDAT_Y
                 .getField("BRANAM").Value = BRATITNAM & " " & BRANAM
                 .getField("BLDGNAM").Value = BLDGNAM
                 .getField("ROOMNO").Value = roomNo
@@ -368,8 +402,8 @@ Sub FillPDFPP012()
                         If PSOINAM <> "" Then .getField("P1.SOINAM").Value = PSOINAM
                         If PYEAK <> "" Then .getField("P1.YAEK").Value = PYEAK
                         If PTHNNAM <> "" Then .getField("P1.THNNAM").Value = PTHNNAM
-                        If PTAMNAM <> "" Then .getField("P1.TAMNAM").Value = PTAMNAM
-                        If PAMPNAM <> "" Then .getField("P1.AMPNAM").Value = PAMPNAM
+                        If PTAMNAM <> "" Then .getField("P1.TAM_NAM").Value = PTAMNAM
+                        If PAMPNAM <> "" Then .getField("P1.AMP_NAM").Value = PAMPNAM
                         If PPROVNAM <> "" Then .getField("P1.PROV_NAME").Value = PPROVNAM
                         If PPOSCOD <> "" Then .getField("P1.POSCOD").Value = PPOSCOD
                         If PART_TELNO <> "" Then .getField("P1.TELNO").Value = PART_TELNO
@@ -462,12 +496,13 @@ If OFFCOD <> currentOFFCOD Then
 End If
 
 ' Check and set the path for saving the PDF
+
+folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\" & SUPOFFCOD & "_" & SUPOFFNAM & "\"
+
 If Left(SUPOFFCOD, 2) < "04" Then
-    folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
-    FileName = folderPath & SUPOFFCOD & "-PP012-P-"
+    FileName = folderPath & SUPOFFCOD & "-PP012-I-"
 Else
-    folderPath = ThisWorkbook.Path & "\" & "GENPDF" & "\"
-    FileName = folderPath & OFFCOD & "-PP012-P-"
+    FileName = folderPath & OFFCOD & "-PP012-I-"
 End If
 
 ' Create the folder if it does not exist
@@ -519,6 +554,10 @@ Set AcroApp = Nothing
 ' Close the log file
 Close #logFile
 
+Call RestoreExcelSettings
+Debug.Print "Excel settings restored"
+
 ' Display completion message
 MsgBox "PDF Generation Completed. " & pdfCount & " PDFs generated.", vbInformation
+
 End Sub
