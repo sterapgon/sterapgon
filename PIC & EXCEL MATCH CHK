@@ -8,12 +8,13 @@ Sub CompareDLNImagesWithNIDDetail()
     Dim excelNIDs As Collection
     Dim fileNIDs As Collection
     Dim NID As String
-    Dim varItem As Variant  ' Added for For Each loop
+    Dim varItem As Variant
+    Dim rngToHighlight As Range
     
     ' Initialize collections and variables
     Set excelNIDs = New Collection
     Set fileNIDs = New Collection
-    Set ws = ThisWorkbook.Sheets("NID_DETAIL")
+    Set ws = ThisWorkbook.Sheets("NID")
     lastRow = ws.Cells(ws.Rows.count, "A").End(xlUp).Row
     folderPath = "C:\Users\Lenovo\Desktop\AUTO FROM PDF PP01 PAPER\DLNPICTURE\"
     
@@ -27,17 +28,25 @@ Sub CompareDLNImagesWithNIDDetail()
     Print #fileNum, "NID Comparison Report - " & Format(Now, "yyyy-mm-dd hh:mm:ss")
     Print #fileNum, String(70, "-")
     
-    ' Show progress bar
+    ' Show progress bar and optimize performance
     Application.ScreenUpdating = False
+    Application.Calculation = xlCalculationManual
     
-    ' First: Collect all NIDs from Excel
+    ' Clear existing colors
+    ws.Range("A2:A" & lastRow).Interior.ColorIndex = xlNone
+    
+    ' First: Collect all NIDs from Excel and their row numbers
     Print #fileNum, vbNewLine & "Collecting NIDs from Excel..."
+    Dim excelNIDRows As Collection
+    Set excelNIDRows = New Collection
+    
     For i = 2 To lastRow
         NID = ws.Cells(i, "A").Value
         If NID <> "" Then
             ' Add to collection with error handling for duplicates
             On Error Resume Next
             excelNIDs.Add NID, NID
+            excelNIDRows.Add i, NID  ' Store row number with NID as key
             If Err.NUMBER = 0 Then
                 ' NID added successfully
             ElseIf Err.NUMBER = 457 Then
@@ -60,6 +69,13 @@ Sub CompareDLNImagesWithNIDDetail()
         fileNIDs.Add NID, NID
         If Err.NUMBER = 0 Then
             ' NID added successfully
+            ' If this NID exists in Excel, highlight its row
+            Dim rowNum As Variant
+            rowNum = excelNIDRows(NID)
+            If Err.NUMBER = 0 Then
+                ' Highlight the row in light green
+                ws.Rows(rowNum).Interior.Color = RGB(198, 239, 206)
+            End If
         ElseIf Err.NUMBER = 457 Then
             ' Duplicate file found
             Print #fileNum, "Warning: Duplicate image file found: " & fileName
@@ -98,7 +114,15 @@ Sub CompareDLNImagesWithNIDDetail()
         On Error Resume Next
         testNID = fileNIDs(CStr(varItem))
         If Err.NUMBER <> 0 Then
-            Print #fileNum, "   - " & varItem
+            ' Get row number for this NID
+            rowNum = excelNIDRows(CStr(varItem))
+            If Err.NUMBER = 0 Then
+                ' Mark row in light red
+                ws.Rows(rowNum).Interior.Color = RGB(255, 199, 206)
+                Print #fileNum, "   - " & varItem & " (Row " & rowNum & ")"
+            Else
+                Print #fileNum, "   - " & varItem
+            End If
             missingImages = missingImages + 1
         End If
         On Error GoTo 0
@@ -111,12 +135,17 @@ Sub CompareDLNImagesWithNIDDetail()
     Print #fileNum, "Total image files: " & fileNIDs.count
     Print #fileNum, "Images without matching NID in Excel: " & missingInExcel
     Print #fileNum, "NIDs without matching image: " & missingImages
+    Print #fileNum, vbNewLine & "Color Legend:"
+    Print #fileNum, "Light Green: NID found with matching image file"
+    Print #fileNum, "Light Red: NID found but no matching image file"
+    Print #fileNum, "No Color: Row skipped (empty or invalid NID)"
     Print #fileNum, vbNewLine & "Report generated at: " & Format(Now, "yyyy-mm-dd hh:mm:ss")
     
     Close fileNum
     
     ' Reset Excel settings
     Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
     
     ' Show completion message
     MsgBox "NID Comparison completed" & vbCrLf & _
@@ -124,6 +153,13 @@ Sub CompareDLNImagesWithNIDDetail()
            "Image files found: " & fileNIDs.count & vbCrLf & _
            "Images without matching NID: " & missingInExcel & vbCrLf & _
            "NIDs without images: " & missingImages & vbCrLf & _
+           "Green rows: matching files found" & vbCrLf & _
+           "Red rows: no matching files" & vbCrLf & _
            "Please check 'nid_comparison_log.txt' for details", vbInformation
+    
+    ' Select back to A1
+    ws.Range("A1").Select
 End Sub
+
+
 

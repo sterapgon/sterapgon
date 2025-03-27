@@ -1,0 +1,35 @@
+Sub DeleteRowsWithSpecificColor()
+    Dim ws As Worksheet
+    Dim rng As Range
+    Dim i As Long
+    Dim targetColor As Long
+
+    ' Set the target color (RGB: 198, 239, 206)
+    targetColor = RGB(198, 239, 206)
+    
+    ' Reference the active worksheet
+    Set ws = ActiveSheet
+    
+    ' Define the used range
+    On Error Resume Next
+    Set rng = ws.UsedRange
+    On Error GoTo 0
+    
+    If Not rng Is Nothing Then
+        Application.ScreenUpdating = False
+        
+        ' Loop through rows from the bottom to row 2
+        For i = rng.Rows.count To 2 Step -1
+            ' Check if the color of the first cell in the row matches the target color
+            If ws.Rows(i).Interior.Color = targetColor Then
+                ws.Rows(i).Delete
+            End If
+        Next i
+        
+        Application.ScreenUpdating = True
+        MsgBox "Rows with RGB(198, 239, 206) have been deleted successfully!", vbInformation
+    Else
+        MsgBox "No data found in this sheet!", vbExclamation
+    End If
+End Sub
+
